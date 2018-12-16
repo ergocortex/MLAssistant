@@ -4,9 +4,6 @@ auth | Roberto Peribáñez Iglesias (ergocortex) 2018
 
 #include <algorithm>
 
-#include "defs.h"
-#include "alpha/core/codelib.h"
-
 #include "tree.h"
 #include "decision.h"
 
@@ -138,8 +135,8 @@ void DecisionTree::Train(void)
     for(uint i = 0, n = samples.factors.size() - 1; i < n; ++i)
         subattributes.push_back(samples.factors[i]->attribute);
 
-    phy::clrptrvector<Node *>(nodes);
-    phy::clrptrvector<Edge *>(edges);
+    clrptrvector<Node *>(nodes);
+    clrptrvector<Edge *>(edges);
 
     TreeInduction(subsamples, subattributes);
 

@@ -13,9 +13,20 @@ auth | Roberto Peribáñez Iglesias (ergocortex) 2018
 typedef unsigned char ubyte;
 typedef unsigned int  uint;
 
+#define safedelete(ptr); {delete(ptr); ptr = nullptr;}
+
 namespace ML
 {
 //------------------------------------------------------------------------| Common
+
+template <class T> void clrptrvector(std::vector <T> &ref)
+{
+    while(!ref.empty())
+    {
+        safedelete(ref.back());
+        ref.pop_back();
+    }
+}
 
 template <class T> void FrecuencyMapping(std::map <T, int> &values, const T &value)
 {
