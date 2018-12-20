@@ -28,25 +28,25 @@ nots | . information gain is greater the less homogeneity an attribute has.
     std::wstring attribute = L"";
     std::map <std::wstring, float> informationGain;
 
-    float entropy = subsamples.factors.back()->GetEntropy();
+    float entropy = subsamples.attributes.back()->GetEntropy();
 
-    for(uint i = 0, n = subsamples.factors.size() - classes; i < n; ++i)
+    for(uint i = 0, n = subsamples.attributes.size() - classes; i < n; ++i)
     {
-        auto it = std::find(subattributes.begin(), subattributes.end(), subsamples.factors[i]->attribute);
+        auto it = std::find(subattributes.begin(), subattributes.end(), subsamples.attributes[i]->name);
 
         if(it != subattributes.end())
         {
-            std::vector<ML::Factor::FrecuencyDiscrete> &frecuencyDetail = *subsamples.factors[i]->GetFrecuencyDiscrete();
+            std::vector<ML::Attribute::ProbabilityDistribution> &frecuencyDetail = *subsamples.attributes[i]->GetProbabilityDistribution();
 
             float gain = 0.0f;
-            float N = subsamples.factors[i]->Size();
+            float N = subsamples.attributes[i]->Size();
 
             for(uint j = 0, m = frecuencyDetail.size(); j < m; ++j)
             {
-                gain -= ((frecuencyDetail[j].p / N) * subsamples.factors.back()->GetEntropy(frecuencyDetail[j].indexes));
+                gain -= ((frecuencyDetail[j].p / N) * subsamples.attributes.back()->GetEntropy(frecuencyDetail[j].indexes));
             }
 
-            informationGain.insert(informationGain.end(), std::pair<std::wstring, float>(subsamples.factors[i]->attribute, entropy + gain));
+            informationGain.insert(std::pair<std::wstring, float>(subsamples.attributes[i]->name, entropy + gain));
         }
     }
 
@@ -92,6 +92,8 @@ void Tree::RankHierarchy(void)
 {
     hierarchy.clear();
 
+    if(nodes.empty()) return;
+
     hierarchy.insert(std::pair<Node *, Hierarchy>(nodes[0], Hierarchy(nullptr)));
 
     for(uint i = 0, n = edges.size(); i < n; ++i)
@@ -132,25 +134,6 @@ void Tree::Prune(Node *node)
         }
 
         Prune(child);
-
-//        if(!child->leaf)
-//        {
-//            itParent->second.edges.clear();
-//            edges.erase(std::find(edges.begin(), edges.end(), edge));
-
-//            auto itChild = hierarchy.find(child);
-
-//            for(uint i = 0, n = itChild->second.edges.size(); i < n; ++i)
-//            {
-//                itChild->second.edges[i]->source = node;
-//                itParent->second.edges.push_back(itChild->second.edges[i]);
-//            }
-//            nodes.erase(std::find(nodes.begin(), nodes.end(), child));
-
-//            hierarchy.erase(itChild);
-
-//            Prune(node);
-//        }
     }
     else
     {
@@ -172,7 +155,7 @@ Node *Tree::Predict(DataFrame &sample)
         std::wstring attribute = node->data.ToWString();
         uint index = sample.GetColumnByAttribute(attribute);
 
-        std::wstring sA = sample.factors[index]->GetCell(0).ToWString();
+        std::wstring sA = sample.attributes[index]->GetCell(0).ToWString();
 
         auto it = hierarchy.find(node);
 

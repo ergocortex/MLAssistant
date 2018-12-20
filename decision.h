@@ -1,5 +1,6 @@
 /*------------------------------------------------------------------------------
-auth | Roberto Peribáñez Iglesias (ergocortex) 2018
+auth | Roberto Peribáñez Iglesias
+date | dec. 2018
 ------------------------------------------------------------------------------*/
 
 #ifndef DECISION_H
@@ -20,7 +21,9 @@ public :
 
     Node *TreeInduction(DataFrame &subsamples, std::vector <std::wstring> &subattributes);
 
-    void Train(void);  
+    void Build(void);
+
+    void KCrossValidation(uint k);
 };
 }
 

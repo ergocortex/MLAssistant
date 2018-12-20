@@ -1,5 +1,6 @@
 /*------------------------------------------------------------------------------
-auth | Roberto Peribáñez Iglesias (ergocortex) 2018
+auth | Roberto Peribáñez Iglesias
+date | dec. 2018
 ------------------------------------------------------------------------------*/
 
 #ifndef PROBABILITY_H

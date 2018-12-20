@@ -77,42 +77,41 @@ std::wstring Variant::ToWString(void) const
     return(L"");
 }
 
-//------------------------------------------------------------------------| Factor
+//------------------------------------------------------------------------| Attribute
 
-Factor::Factor(const std::wstring &attribute, const bool discrete) :
-    attribute(attribute), discrete(discrete) {}
+Attribute::Attribute(const std::wstring &attribute, const bool discrete) :
+    name(attribute), discrete(discrete) {}
 
-uint Factor::Size(void) {return(0);}
+uint Attribute::Size(void) {return(0);}
 
-bool Factor::GetUniformity(void) {return(true);}
+bool Attribute::GetUniformity(void) {return(true);}
 
-Variant Factor::GetMode(const std::vector<uint> &indexes)
+Variant Attribute::GetMode(const std::vector<uint> &indexes)
 {
     Variant variant(L"");
 
     return(variant);
 }
 
-float Factor::GetEntropy(const std::vector<uint> &/*indexes*/) {return(0.0f);}
+float Attribute::GetEntropy(const std::vector<uint> &/*indexes*/) {return(0.0f);}
 
-std::vector<Factor::FrecuencyDiscrete> *Factor::GetFrecuencyDiscrete(void) {return(nullptr);}
+std::vector<Attribute::ProbabilityDistribution> *Attribute::GetProbabilityDistribution(
+    const std::vector<uint> &indexes) {return(nullptr);}
 
-std::vector<Factor::FrecuencyContinuous> *Factor::GetFrecuencyContinuous(void) {return(nullptr);}
-
-Variant Factor::GetCell(uint index)
+Variant Attribute::GetCell(uint index)
 {
     Variant variant(L"");
 
     return(variant);
 }
 
-//------------------------------------------------------------------------| BoolFactor
+//------------------------------------------------------------------------| BoolVector
 
-BoolFactor::BoolFactor(const std::wstring &attribute) : Factor(attribute, true) {}
+BoolAttribute::BoolAttribute(const std::wstring &attribute) : Attribute(attribute, true) {}
 
-uint BoolFactor::Size(void) {return(cells.size());}
+uint BoolAttribute::Size(void) {return(cells.size());}
 
-bool BoolFactor::GetUniformity(void)
+bool BoolAttribute::GetUniformity(void)
 {
     for(uint i = 1, n = cells.size(); i < n; ++i)
     {
@@ -123,7 +122,7 @@ bool BoolFactor::GetUniformity(void)
     return(true);
 }
 
-Variant BoolFactor::GetMode(const std::vector<uint> &indexes)
+Variant BoolAttribute::GetMode(const std::vector<uint> &indexes)
 {
     std::map<bool, int> frecuency = GetFrecuencyMapping<bool>(cells, indexes);
 
@@ -132,9 +131,9 @@ Variant BoolFactor::GetMode(const std::vector<uint> &indexes)
     return(variant);
 }
 
-float BoolFactor::GetEntropy(const std::vector<uint> &/*indexes*/)
+float BoolAttribute::GetEntropy(const std::vector<uint> &indexes)
 {
-    std::map<bool, int> frecuency = GetFrecuencyMapping<bool>(cells);
+    std::map<bool, int> frecuency = GetFrecuencyMapping<bool>(cells, indexes);
     std::vector<float> proportion;
 
     float entropy = 0.0f;
@@ -149,25 +148,26 @@ float BoolFactor::GetEntropy(const std::vector<uint> &/*indexes*/)
     return(entropy);
 }
 
-std::vector<Factor::FrecuencyDiscrete> *BoolFactor::GetFrecuencyDiscrete(void)
+std::vector<Attribute::ProbabilityDistribution> *BoolAttribute::GetProbabilityDistribution(
+    const std::vector<uint> &indexes)
 {
-    return(GetDiscreteFrecuency<bool>(cells));
+    return(GetDistributionFuncion<bool>(cells, indexes));
 }
 
-Variant BoolFactor::GetCell(uint index)
+Variant BoolAttribute::GetCell(uint index)
 {
     Variant variant(cells[index]);
 
     return(variant);
 }
 
-//------------------------------------------------------------------------| IntFactor
+//------------------------------------------------------------------------| IntVector
 
-IntFactor::IntFactor(const std::wstring &attribute) : Factor(attribute, false) {}
+IntAttribute::IntAttribute(const std::wstring &attribute) : Attribute(attribute, false) {}
 
-uint IntFactor::Size(void) {return(cells.size());}
+uint IntAttribute::Size(void) {return(cells.size());}
 
-bool IntFactor::GetUniformity(void)
+bool IntAttribute::GetUniformity(void)
 {
     for(uint i = 1, n = cells.size(); i < n; ++i)
     {
@@ -178,7 +178,7 @@ bool IntFactor::GetUniformity(void)
     return(true);
 }
 
-Variant IntFactor::GetMode(const std::vector<uint> &indexes)
+Variant IntAttribute::GetMode(const std::vector<uint> &indexes)
 {
     std::map<int, int> frecuency = GetFrecuencyMapping<int>(cells, indexes);
 
@@ -187,9 +187,9 @@ Variant IntFactor::GetMode(const std::vector<uint> &indexes)
     return(variant);
 }
 
-float IntFactor::GetEntropy(const std::vector<uint> &/*indexes*/)
+float IntAttribute::GetEntropy(const std::vector<uint> &indexes)
 {
-    std::map<int, int> frecuency = GetFrecuencyMapping<int>(cells);
+    std::map<int, int> frecuency = GetFrecuencyMapping<int>(cells, indexes);
     std::vector<float> proportion;
 
     float entropy = 0.0f;
@@ -204,30 +204,29 @@ float IntFactor::GetEntropy(const std::vector<uint> &/*indexes*/)
     return(entropy);
 }
 
-std::vector<Factor::FrecuencyDiscrete> *IntFactor::GetFrecuencyDiscrete(void)
+std::vector<Attribute::ProbabilityDistribution> *IntAttribute::GetProbabilityDistribution(
+    const std::vector<uint> &indexes)
 {
-    return(GetDiscreteFrecuency<int>(cells));
+    if(discrete)
+        return(GetDistributionFuncion<int>(cells, indexes));
+    else
+        return(GetDensityFunction<int>(cells, indexes));
 }
 
-std::vector<Factor::FrecuencyContinuous> *IntFactor::GetFrecuencyContinuous(void)
-{
-    return(GetContinuousFrecuency<int>(cells));
-}
-
-Variant IntFactor::GetCell(uint index)
+Variant IntAttribute::GetCell(uint index)
 {
     Variant variant(cells[index]);
 
     return(variant);
 }
 
-//------------------------------------------------------------------------| FloatFactor
+//------------------------------------------------------------------------| FloaVector
 
-FloatFactor::FloatFactor(const std::wstring &attribute) : Factor(attribute, false) {}
+FloaAttribute::FloaAttribute(const std::wstring &attribute) : Attribute(attribute, false) {}
 
-uint FloatFactor::Size(void) {return(cells.size());}
+uint FloaAttribute::Size(void) {return(cells.size());}
 
-bool FloatFactor::GetUniformity(void)
+bool FloaAttribute::GetUniformity(void)
 {
     for(uint i = 1, n = cells.size(); i < n; ++i)
     {
@@ -238,7 +237,7 @@ bool FloatFactor::GetUniformity(void)
     return(true);
 }
 
-Variant FloatFactor::GetMode(const std::vector<uint> &indexes)
+Variant FloaAttribute::GetMode(const std::vector<uint> &indexes)
 {
     std::map<float, int> frecuency = GetFrecuencyMapping<float>(cells, indexes);
 
@@ -247,9 +246,9 @@ Variant FloatFactor::GetMode(const std::vector<uint> &indexes)
     return(variant);
 }
 
-float FloatFactor::GetEntropy(const std::vector<uint> &/*indexes*/)
+float FloaAttribute::GetEntropy(const std::vector<uint> &indexes)
 {
-    std::map<float, int> frecuency = GetFrecuencyMapping<float>(cells);
+    std::map<float, int> frecuency = GetFrecuencyMapping<float>(cells, indexes);
     std::vector<float> proportion;
 
     float entropy = 0.0f;
@@ -264,30 +263,29 @@ float FloatFactor::GetEntropy(const std::vector<uint> &/*indexes*/)
     return(entropy);
 }
 
-std::vector<Factor::FrecuencyDiscrete> *FloatFactor::GetFrecuencyDiscrete(void)
+std::vector<Attribute::ProbabilityDistribution> *FloaAttribute::GetProbabilityDistribution(
+    const std::vector<uint> &indexes)
 {
-    return(GetDiscreteFrecuency<float>(cells));
+    if(discrete)
+        return(GetDistributionFuncion<float>(cells, indexes));
+    else
+        return(GetDensityFunction<float>(cells, indexes));
 }
 
-std::vector<Factor::FrecuencyContinuous> *FloatFactor::GetFrecuencyContinuous(void)
-{
-    return(GetContinuousFrecuency<float>(cells));
-}
-
-Variant FloatFactor::GetCell(uint index)
+Variant FloaAttribute::GetCell(uint index)
 {
     Variant variant(cells[index]);
 
     return(variant);
 }
 
-//------------------------------------------------------------------------| WStringFactor
+//------------------------------------------------------------------------| WStringVector
 
-WStringFactor::WStringFactor(const std::wstring &attribute) : Factor(attribute, true) {}
+WStringAttribute::WStringAttribute(const std::wstring &attribute) : Attribute(attribute, true) {}
 
-uint WStringFactor::Size(void) {return(cells.size());}
+uint WStringAttribute::Size(void) {return(cells.size());}
 
-bool WStringFactor::GetUniformity(void)
+bool WStringAttribute::GetUniformity(void)
 {
     for(uint i = 1, n = cells.size(); i < n; ++i)
     {
@@ -298,7 +296,7 @@ bool WStringFactor::GetUniformity(void)
     return(true);
 }
 
-Variant WStringFactor::GetMode(const std::vector<uint> &indexes)
+Variant WStringAttribute::GetMode(const std::vector<uint> &indexes)
 {
     std::map<std::wstring, int> frecuency = GetFrecuencyMapping<std::wstring>(cells, indexes);
 
@@ -307,7 +305,7 @@ Variant WStringFactor::GetMode(const std::vector<uint> &indexes)
     return(variant);
 }
 
-float WStringFactor::GetEntropy(const std::vector<uint> &indexes)
+float WStringAttribute::GetEntropy(const std::vector<uint> &indexes)
 {
     std::map<std::wstring, int> frecuency = GetFrecuencyMapping<std::wstring>(cells, indexes);
     std::vector<float> proportion;
@@ -324,12 +322,13 @@ float WStringFactor::GetEntropy(const std::vector<uint> &indexes)
     return(entropy);
 }
 
-std::vector<Factor::FrecuencyDiscrete> *WStringFactor::GetFrecuencyDiscrete(void)
+std::vector<Attribute::ProbabilityDistribution> *WStringAttribute::GetProbabilityDistribution(
+    const std::vector<uint> &indexes)
 {
-    return(GetDiscreteFrecuency<std::wstring>(cells));
+    return(GetDistributionFuncion<std::wstring>(cells, indexes));
 }
 
-Variant WStringFactor::GetCell(uint index)
+Variant WStringAttribute::GetCell(uint index)
 {
     Variant variant(cells[index]);
 
@@ -342,9 +341,9 @@ DataFrame::DataFrame(void) {}
 
 ubyte DataFrame::GetColumnByAttribute(const std::wstring &attribute)
 {
-    for(ubyte i = 0, n = factors.size(); i < n; ++i)
+    for(ubyte i = 0, n = attributes.size(); i < n; ++i)
     {
-        if(factors[i]->attribute == attribute)
+        if(attributes[i]->name == attribute)
             return(i);
     }
 
@@ -353,19 +352,19 @@ ubyte DataFrame::GetColumnByAttribute(const std::wstring &attribute)
 
 ubyte DataFrame::GetColumnType(ubyte index)
 {
-    BoolFactor *boolFactor = dynamic_cast<BoolFactor *>(factors[index]);
+    BoolAttribute *boolFactor = dynamic_cast<BoolAttribute *>(attributes[index]);
 
     if(boolFactor) return(BoolType);
 
-    IntFactor *intFactor = dynamic_cast<IntFactor *>(factors[index]);
+    IntAttribute *intFactor = dynamic_cast<IntAttribute *>(attributes[index]);
 
     if(intFactor) return(IntType);
 
-    FloatFactor *floatFactor = dynamic_cast<FloatFactor *>(factors[index]);
+    FloaAttribute *floatFactor = dynamic_cast<FloaAttribute *>(attributes[index]);
 
     if(floatFactor) return(FloatType);
 
-    WStringFactor *wstringFactor = dynamic_cast<WStringFactor *>(factors[index]);
+    WStringAttribute *wstringFactor = dynamic_cast<WStringAttribute *>(attributes[index]);
 
     if(wstringFactor) return(WStringType);
 
@@ -376,16 +375,16 @@ DataFrame *DataFrame::GetSubDataFrame(const std::vector <uint> &indexes)
 {
     DataFrame *dataframe = new DataFrame();
 
-    for(ubyte i = 0, n = factors.size(); i < n; ++i)
+    for(ubyte i = 0, n = attributes.size(); i < n; ++i)
     {
-        Factor *factor = nullptr;
+        Attribute *factor = nullptr;
 
         switch(GetColumnType(i))
         {
         case BoolType :
         {
-            BoolFactor *source = dynamic_cast<BoolFactor *>(factors[i]);
-            BoolFactor *target = new BoolFactor(*source);
+            BoolAttribute *source = dynamic_cast<BoolAttribute *>(attributes[i]);
+            BoolAttribute *target = new BoolAttribute(*source);
 
             for(uint j = 0, m = target->cells.size(); j < m; ++j)
             {
@@ -399,8 +398,8 @@ DataFrame *DataFrame::GetSubDataFrame(const std::vector <uint> &indexes)
         }
         case IntType :
         {
-            IntFactor *source = dynamic_cast<IntFactor *>(factors[i]);
-            IntFactor *target = new IntFactor(*source);
+            IntAttribute *source = dynamic_cast<IntAttribute *>(attributes[i]);
+            IntAttribute *target = new IntAttribute(*source);
 
             for(uint j = 0, m = target->cells.size(); j < m; ++j)
             {
@@ -414,8 +413,8 @@ DataFrame *DataFrame::GetSubDataFrame(const std::vector <uint> &indexes)
         }
         case FloatType :
         {
-            FloatFactor *source = dynamic_cast<FloatFactor *>(factors[i]);
-            FloatFactor *target = new FloatFactor(*source);
+            FloaAttribute *source = dynamic_cast<FloaAttribute *>(attributes[i]);
+            FloaAttribute *target = new FloaAttribute(*source);
 
             for(uint j = 0, m = target->cells.size(); j < m; ++j)
             {
@@ -429,8 +428,8 @@ DataFrame *DataFrame::GetSubDataFrame(const std::vector <uint> &indexes)
         }
         case WStringType :
         {
-            WStringFactor *source = dynamic_cast<WStringFactor *>(factors[i]);
-            WStringFactor *target = new WStringFactor(*source);
+            WStringAttribute *source = dynamic_cast<WStringAttribute *>(attributes[i]);
+            WStringAttribute *target = new WStringAttribute(*source);
 
             for(uint j = 0, m = target->cells.size(); j < m; ++j)
             {
@@ -444,7 +443,7 @@ DataFrame *DataFrame::GetSubDataFrame(const std::vector <uint> &indexes)
         }
         }
 
-        dataframe->factors.push_back(factor);
+        dataframe->attributes.push_back(factor);
     }
 
     return(dataframe);

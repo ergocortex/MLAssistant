@@ -1,5 +1,5 @@
 /*------------------------------------------------------------------------------
-auth | Roberto Peribáñez Iglesias (ergocortex) 2018
+auth | Roberto Peribáñez Iglesias (ergocortex) on Dec. 2018
 ------------------------------------------------------------------------------*/
 
 #ifndef CORE_H
@@ -28,12 +28,12 @@ template <class T> void clrptrvector(std::vector <T> &ref)
     }
 }
 
-template <class T> void FrecuencyMapping(std::map <T, int> &values, const T &value)
+template <class K> void FrecuencyMapping(std::map <K, int> &values, const K &value)
 {
     auto it = values.find(value);
 
     if(it == values.end())
-        values.insert(values.end(), std::pair <T, int> (value, 1));
+        values.insert(values.end(), std::pair <K, int> (value, 1));
     else
         ++it->second;
 }
@@ -57,19 +57,20 @@ template <class K, class V> int FrecuencyMax(std::map <K, V> &values)
     return(index);
 }
 
-template <class T> T FrecuencyMode(std::map <T, int> &values)
+template <class K> K FrecuencyMode(std::map <K, int> &values)
 {
     auto it = values.begin();
-    std::advance(it, FrecuencyMax<T, int>(values));
+
+    std::advance(it, FrecuencyMax<K, int>(values));
 
     return(it->first);
 }
 
-template <class T> typename std::map<T, int>::iterator FrecuencyMedian(std::map<T, int> &values, uint N, uint &p)
+template <class K> typename std::map<K, int>::iterator FrecuencyMedian(std::map<K, int> &values, uint N, uint &f)
 {
     auto it = values.begin();
 
-    for(p = 0; p < (N / 2); ++it, p += it->second);
+    for(f = 0; f < (N / 2); ++it, f += it->second);
 
     return(it);
 }
@@ -77,6 +78,9 @@ template <class T> typename std::map<T, int>::iterator FrecuencyMedian(std::map<
 //------------------------------------------------------------------------| Variant
 
 struct Variant
+/*------------------------------------------------------------------------------
+desc | . simulates dynamic typing
+------------------------------------------------------------------------------*/
 {
 public :
 
@@ -110,55 +114,49 @@ public :
     std::wstring ToWString(void) const;
 };
 
-//------------------------------------------------------------------------| Factor
+//------------------------------------------------------------------------| Attribute
 
-struct Factor
+struct Attribute
 /*------------------------------------------------------------------------------
 nots | . entropy in samples with more than 2 classes can be greater than 1.
 ------------------------------------------------------------------------------*/
 {
 public :
 
-    struct FrecuencyDiscrete
-    {
-    public :
-
-        Variant key;
-        float p;
-        std::vector <uint> indexes;
-
-    public :
-
-        FrecuencyDiscrete(Variant key, float p) : key(key), p(p) {}
-    };
-
-    struct FrecuencyContinuous : public FrecuencyDiscrete
+    struct ProbabilityDistribution
     /*--------------------------------------------------------------------------
     vars | mathop | 0 : = | 1 : < | 2 : <= | 3 : >= | 4 : >
     --------------------------------------------------------------------------*/
     {
     public :
 
+        Variant value;
+        float p;
         ubyte mathop;
+
+        std::vector <uint> indexes;
 
     public :
 
-        FrecuencyContinuous(Variant key, ubyte mathop, float p) :
-            FrecuencyDiscrete(key, p), mathop(mathop) {}
+        ProbabilityDistribution(Variant key, float p, ubyte mathop = 0) : value(key), p(p), mathop(mathop) {}
     };
 
 public :
 
-    std::wstring attribute;
+    std::wstring name;
     bool discrete;
 
 public :
 
-    Factor(const std::wstring &attribute, const bool discrete);
+    Attribute(const std::wstring &name, const bool discrete);
 
 protected :
 
-    template <class T> std::map<T, int> GetFrecuencyMapping(const std::vector <T> &cells, const std::vector<uint> &indexes = {})
+    template <class T> std::map<T, int> GetFrecuencyMapping(const std::vector <T> &cells,
+        const std::vector<uint> &indexes = {})
+    /*--------------------------------------------------------------------------
+    vars | indexes : index mapping restriction
+    --------------------------------------------------------------------------*/
     {
         std::map<T, int> frecuency;
 
@@ -179,33 +177,41 @@ protected :
         return(frecuency);
     }
 
-    template <class T> std::vector<FrecuencyDiscrete> *GetDiscreteFrecuency(const std::vector <T> &cells)
+    template <class T> std::vector<ProbabilityDistribution> *GetDistributionFuncion(
+        const std::vector <T> &cells, const std::vector<uint> &indexes = {})
+    /*--------------------------------------------------------------------------
+    nots | . for discrete variables, based on distribution function.
+    --------------------------------------------------------------------------*/
     {
-        std::vector <FrecuencyDiscrete> *frecuencyDiscrete = new std::vector <FrecuencyDiscrete>;
+        std::vector <ProbabilityDistribution> *discreteDistribution = new std::vector <ProbabilityDistribution>;
 
-        std::map<T, int> frecuency = GetFrecuencyMapping<T>(cells);
+        std::map<T, int> frecuency = GetFrecuencyMapping<T>(cells, indexes);
 
         float N = cells.size();
 
         for(auto it : frecuency)
         {
-            frecuencyDiscrete->push_back(FrecuencyDiscrete(it.first, (float)(it.second)/N));
+            discreteDistribution->push_back(ProbabilityDistribution(it.first, (float)(it.second)/N));
 
             for(uint i = 0, n = cells.size();i < n; ++i)
             {
                 if(cells[i] == it.first)
-                    frecuencyDiscrete->back().indexes.push_back(i);
+                    discreteDistribution->back().indexes.push_back(i);
             }
         }
 
-        return(frecuencyDiscrete);
+        return(discreteDistribution);
     }
 
-    template <class T> std::vector<Factor::FrecuencyContinuous> *GetContinuousFrecuency(const std::vector <T> &cells)
+    template <class T> std::vector<ProbabilityDistribution> *GetDensityFunction(
+        const std::vector <T> &cells, const std::vector<uint> &indexes = {})
+    /*--------------------------------------------------------------------------
+    nots | . for continuous variables, based on density function.
+    --------------------------------------------------------------------------*/
     {
-        std::vector <FrecuencyContinuous> *frecuencyContinuous = new std::vector <FrecuencyContinuous>;
+        std::vector <ProbabilityDistribution> *probabilityDistribution = new std::vector <ProbabilityDistribution>;
 
-        std::map<T, int> frecuency = GetFrecuencyMapping<T>(cells);
+        std::map<T, int> frecuency = GetFrecuencyMapping<T>(cells, indexes);
 
         uint N = cells.size();
 
@@ -219,25 +225,25 @@ protected :
 
             q = N - p;
 
-            frecuencyContinuous->push_back(FrecuencyContinuous(it->first, 1, (float)(p)/(float)(N)));
-            frecuencyContinuous->push_back(FrecuencyContinuous(it->first, 3, (float)(q)/(float)(N)));
+            probabilityDistribution->push_back(ProbabilityDistribution(it->first, (float)(p)/(float)(N), 1));
+            probabilityDistribution->push_back(ProbabilityDistribution(it->first, (float)(q)/(float)(N), 3));
         }
         else
         {
             it = frecuency.begin();
 
-            frecuencyContinuous->push_back(FrecuencyContinuous(it->first, 0, 1.0f));
+            probabilityDistribution->push_back(ProbabilityDistribution(it->first, 1.0f, 0));
         }
 
         for(uint i = 0, n = cells.size(); i < n; ++i)
         {
             if(cells[i] < it->first)
-                frecuencyContinuous->front().indexes.push_back(i);
+                probabilityDistribution->front().indexes.push_back(i);
             else
-                frecuencyContinuous->back().indexes.push_back(i);
+                probabilityDistribution->back().indexes.push_back(i);
         }
 
-        return(frecuencyContinuous);
+        return(probabilityDistribution);
     }
 
 public :
@@ -249,15 +255,15 @@ public :
 
     virtual float GetEntropy(const std::vector<uint> &indexes = {});
 
-    virtual std::vector<FrecuencyDiscrete> *GetFrecuencyDiscrete(void);
-    virtual std::vector<FrecuencyContinuous> *GetFrecuencyContinuous(void);
+    virtual std::vector<ProbabilityDistribution> *GetProbabilityDistribution(
+        const std::vector<uint> &indexes = {});
 
     virtual Variant GetCell(uint index);
 };
 
-//------------------------------------------------------------------------| BoolFactor
+//------------------------------------------------------------------------| BoolVector
 
-struct BoolFactor: public Factor
+struct BoolAttribute: public Attribute
 {
 public :
 
@@ -265,7 +271,7 @@ public :
 
 public :
 
-    BoolFactor(const std::wstring &attribute);
+    BoolAttribute(const std::wstring &name);
 
 public :
 
@@ -276,14 +282,15 @@ public :
 
     virtual float GetEntropy(const std::vector<uint> &indexes = {});
 
-    virtual std::vector<FrecuencyDiscrete> *GetFrecuencyDiscrete(void);
+    virtual std::vector<ProbabilityDistribution> *GetProbabilityDistribution(
+        const std::vector<uint> &indexes = {});
 
     virtual Variant GetCell(uint index);
 };
 
-//------------------------------------------------------------------------| IntFactor
+//------------------------------------------------------------------------| IntVector
 
-struct IntFactor: public Factor
+struct IntAttribute: public Attribute
 {
 public :
 
@@ -291,7 +298,7 @@ public :
 
 public :
 
-    IntFactor(const std::wstring &attribute);
+    IntAttribute(const std::wstring &name);
 
 public :
 
@@ -302,15 +309,15 @@ public :
 
     virtual float GetEntropy(const std::vector<uint> &indexes = {});
 
-    virtual std::vector<FrecuencyDiscrete> *GetFrecuencyDiscrete(void);
-    virtual std::vector<FrecuencyContinuous> *GetFrecuencyContinuous(void);
+    virtual std::vector<ProbabilityDistribution> *GetProbabilityDistribution(
+        const std::vector<uint> &indexes = {});
 
     virtual Variant GetCell(uint index);
 };
 
-//------------------------------------------------------------------------| FloatFactor
+//------------------------------------------------------------------------| FloaVector
 
-struct FloatFactor: public Factor
+struct FloaAttribute: public Attribute
 {
 public :
 
@@ -318,7 +325,7 @@ public :
 
 public :
 
-    FloatFactor(const std::wstring &attribute);
+    FloaAttribute(const std::wstring &name);
 
 public :
 
@@ -329,15 +336,15 @@ public :
 
     virtual float GetEntropy(const std::vector<uint> &indexes = {});
 
-    virtual std::vector<FrecuencyDiscrete> *GetFrecuencyDiscrete(void);
-    virtual std::vector<FrecuencyContinuous> *GetFrecuencyContinuous(void);
+    virtual std::vector<ProbabilityDistribution> *GetProbabilityDistribution(
+        const std::vector<uint> &indexes = {});
 
     virtual Variant GetCell(uint index);
 };
 
-//------------------------------------------------------------------------| WStringFactor
+//------------------------------------------------------------------------| WStringVector
 
-struct WStringFactor: public Factor
+struct WStringAttribute: public Attribute
 {
 public :
 
@@ -345,7 +352,7 @@ public :
 
 public :
 
-    WStringFactor(const std::wstring &attribute);
+    WStringAttribute(const std::wstring &name);
 
 public :
 
@@ -356,7 +363,8 @@ public :
 
     virtual float GetEntropy(const std::vector<uint> &indexes = {});
 
-    virtual std::vector<FrecuencyDiscrete> *GetFrecuencyDiscrete(void);
+    virtual std::vector<ProbabilityDistribution> *GetProbabilityDistribution(
+        const std::vector<uint> &indexes = {});
 
     virtual Variant GetCell(uint index);
 };
@@ -365,7 +373,7 @@ public :
 
 struct DataFrame
 /*------------------------------------------------------------------------------
-nots | . vector requires pointer of factors to avoid object slicing
+nots | . vector requires pointer of Vectors to avoid object slicing
 ------------------------------------------------------------------------------*/
 {
 public :
@@ -374,7 +382,7 @@ public :
 
 public :
 
-    std::vector <Factor *> factors;
+    std::vector <Attribute *> attributes;
 
 public :
 

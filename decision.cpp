@@ -16,6 +16,7 @@ DecisionTree::DecisionTree(void) : Tree(){}
 
 ML::Node *DecisionTree::TreeInduction(DataFrame &subsamples, std::vector<std::wstring> &subattributes)
 /*------------------------------------------------------------------------------
+vars | maxdeep : used for debugging.
 nots | . assuming last factor is class
 ------------------------------------------------------------------------------*/
 {
@@ -29,111 +30,74 @@ nots | . assuming last factor is class
 
     Node *node = AddNode();
 
-    // '--> P2 : If all the subsamples belongs to same class, then return node as leaf node of class C
+    // '--> P2 : If all the subsamples belongs to same class, then return node as leaf node of class C.
+    // '--> P3 : If subattributes is empty then return node as leaf node.
 
-    // '--> P3 : If subattributes is empty then then return node as leaf node of mode class.
-
-    bool uniformity = subsamples.factors.back()->GetUniformity();
+    bool uniformity = subsamples.attributes.back()->GetUniformity();
 
     if(uniformity || subattributes.empty())
     {
-        node->data = subsamples.factors.back()->GetMode();
+        node->data = subsamples.attributes.back()->GetMode();
         node->leaf = true;
 
         --deep;
         return(node);
     }
 
-    // '--> P4 : SelectSINO  aplicar  Método_Selección_Atributos(E,  Lista_Atributos)
-    //           para  seleccionar el atributo A que mejor particiona E.
+    // '--> P4 : Select the attribute that best divides the subsamples dataframe.
 
     std::wstring attribute = AttributeSelection::InformationGain(subsamples, subattributes);
 
-    // '--> P5 : Borrar Atributo A de la lista de Atributos Lista_Atributos
+    // '--> P5 : Clear attribute selected from attribute list.
 
     ClearAttribute(attribute, subattributes);
 
-    // '--> P6 : Etiquetar N con el atributo seleccionado
+    // '--> P6 : Label node with selected atributte.
 
     node->data = attribute;
 
-    // '--> P7 : Para cada valor V de A
-    //           Siendo Ev el subconjunto de elementos en E con valor V en el atributo A
+    // '--> P7 : For every value of attribute (being subsubsample the set of elements with value V in attribute A).
+    // '--> P8 : If subsubsample is empty then create an edge with mode class.
+    // '--> P9 : Else create an edge than bind node to node returned frome TreeIndction(subsubdataframe, subsubattributes)
 
-    // '--> P8 : Si Ev esta vacio
-    //           Entonces unir al nodo N una hoja etiquetada con la clase mayoritaria de E
+    Attribute *factor = subsamples.attributes[subsamples.GetColumnByAttribute(attribute)];
 
-    // '--> P9 : Sino unir al nodo N el nodo retornado de Inducir_arbol (Ev, ListaAtributos,
-    //           Metodo_Seleccion_Atributos)
+    std::vector<ML::Attribute::ProbabilityDistribution> &probabilityDistribution = *factor->GetProbabilityDistribution();
 
-
-    Factor *factor = subsamples.factors[subsamples.GetColumnByAttribute(attribute)];
-
-    if(factor->discrete)
+    for(uint i = 0, n = probabilityDistribution.size(); i < n; ++i)
     {
-        std::vector<ML::Factor::FrecuencyDiscrete> &frecuencyDiscrete = *factor->GetFrecuencyDiscrete();
+        Node *child = nullptr;
 
-        for(uint i = 0, n = frecuencyDiscrete.size(); i < n; ++i)
+        if(probabilityDistribution[i].indexes.empty())
         {
-            Node *child = nullptr;
+            child = AddNode();
 
-            if(frecuencyDiscrete[i].indexes.empty())
-            {
-                child = AddNode();
-
-                child->leaf = true;
-                child->data = subsamples.factors.back()->GetMode();
-            }
-            else
-            {
-                if((maxdeep == 0) || (deep < maxdeep))
-                {
-                    child = TreeInduction(*subsamples.GetSubDataFrame(frecuencyDiscrete[i].indexes), subattributes);
-                }
-            }
-
-            if(child) AddEdge(frecuencyDiscrete[i].key, frecuencyDiscrete[i].p, 0, node, child);
+            child->leaf = true;
+            child->data = subsamples.attributes.back()->GetMode();
         }
-    }
-    else
-    {
-        std::vector<ML::Factor::FrecuencyContinuous> &frecuencyContinuous = *factor->GetFrecuencyContinuous();
-
-        for(uint i = 0, n = frecuencyContinuous.size(); i < n; ++i)
+        else
         {
-            Node *child = nullptr;
-
-            if(frecuencyContinuous[i].indexes.empty())
+            if((maxdeep == 0) || (deep < maxdeep))
             {
-                child = AddNode();
-
-                child->leaf = true;
-                child->data = subsamples.factors.back()->GetMode();
+                child = TreeInduction(*subsamples.GetSubDataFrame(probabilityDistribution[i].indexes), subattributes);
             }
-            else
-            {
-                if(deep < maxdeep)
-                {
-                    child = TreeInduction(*subsamples.GetSubDataFrame(frecuencyContinuous[i].indexes), subattributes);
-                }
-            }
-
-            if(child) AddEdge(frecuencyContinuous[i].key, frecuencyContinuous[i].p, frecuencyContinuous[i].mathop, node, child);
         }
+
+        if(child) AddEdge(probabilityDistribution[i].value, probabilityDistribution[i].p, 0, node, child);
     }
 
     --deep;
     return(node);
 }
 
-void DecisionTree::Train(void)
+void DecisionTree::Build(void)
 {
     DataFrame subsamples = samples;
 
     std::vector <std::wstring> subattributes;
 
-    for(uint i = 0, n = samples.factors.size() - 1; i < n; ++i)
-        subattributes.push_back(samples.factors[i]->attribute);
+    for(uint i = 0, n = samples.attributes.size() - 1; i < n; ++i)
+        subattributes.push_back(samples.attributes[i]->name);
 
     clrptrvector<Node *>(nodes);
     clrptrvector<Edge *>(edges);
@@ -141,4 +105,9 @@ void DecisionTree::Train(void)
     TreeInduction(subsamples, subattributes);
 
     RankHierarchy();
+}
+
+void DecisionTree::KCrossValidation(uint k)
+{
+
 }

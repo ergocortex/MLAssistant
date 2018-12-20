@@ -23,56 +23,27 @@ ML::Node *ProbabilityTree::TreeInduction(DataFrame &subsamples, std::vector <std
 
     node->data = attribute;
 
-    for(Factor *factor : subsamples.factors)
+    for(Attribute *factor : subsamples.attributes)
     {
-        if(factor->attribute == attribute)
+        std::vector<ML::Attribute::ProbabilityDistribution> &frecuencyDiscrete = *factor->GetProbabilityDistribution();
+
+        for(uint i = 0, n = frecuencyDiscrete.size(); i < n; ++i)
         {
-            if(factor->discrete)
+            Node *child = nullptr;
+
+            if(leaf)
             {
-                std::vector<ML::Factor::FrecuencyDiscrete> &frecuencyDiscrete = *factor->GetFrecuencyDiscrete();
+                child = AddNode();
 
-                for(uint i = 0, n = frecuencyDiscrete.size(); i < n; ++i)
-                {
-                    Node *child = nullptr;
-
-                    if(leaf)
-                    {
-                        child = AddNode();
-
-                        child->leaf = true;
-                        child->data = frecuencyDiscrete[i].key;
-                    }
-                    else
-                    {
-                        child = TreeInduction(*subsamples.GetSubDataFrame(frecuencyDiscrete[i].indexes), subattributes);
-                    }
-
-                    if(child) AddEdge(frecuencyDiscrete[i].key, frecuencyDiscrete[i].p, 0, node, child);
-                }
+                child->leaf = true;
+                child->data = frecuencyDiscrete[i].value;
             }
             else
             {
-                std::vector<ML::Factor::FrecuencyContinuous> &frecuencyContinuous = *factor->GetFrecuencyContinuous();
-
-                for(uint i = 0, n = frecuencyContinuous.size(); i < n; ++i)
-                {
-                    Node *child = nullptr;
-
-                    if(leaf)
-                    {
-                        child = AddNode();
-
-                        child->leaf = true;
-                        child->data = frecuencyContinuous[i].key;
-                    }
-                    else
-                    {
-                        child = TreeInduction(*subsamples.GetSubDataFrame(frecuencyContinuous[i].indexes), subattributes);
-                    }
-
-                    if(child) AddEdge(frecuencyContinuous[i].key, frecuencyContinuous[i].p, frecuencyContinuous[i].mathop, node, child);
-                }
+                child = TreeInduction(*subsamples.GetSubDataFrame(frecuencyDiscrete[i].indexes), subattributes);
             }
+
+            if(child) AddEdge(frecuencyDiscrete[i].value, frecuencyDiscrete[i].p, 0, node, child);
         }
     }
 
@@ -85,8 +56,8 @@ void ProbabilityTree::Build(void)
 
     std::vector <std::wstring> subattributes;
 
-    for(uint i = 0, n = samples.factors.size(); i < n; ++i)
-        subattributes.push_back(samples.factors[i]->attribute);
+    for(uint i = 0, n = samples.attributes.size(); i < n; ++i)
+        subattributes.push_back(samples.attributes[i]->name);
 
     clrptrvector<Node *>(nodes);
     clrptrvector<Edge *>(edges);
