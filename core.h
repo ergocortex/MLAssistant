@@ -15,9 +15,15 @@ typedef unsigned int  uint;
 
 #define safedelete(ptr); {delete(ptr); ptr = nullptr;}
 
+
 namespace ML
 {
 //------------------------------------------------------------------------| Common
+
+inline float max(const float cmpA, const float cmpB)
+{
+    return((cmpA > cmpB) ? cmpA : cmpB);
+}
 
 template <class T> void clrptrvector(std::vector <T> &ref)
 {
@@ -138,7 +144,7 @@ public :
 
     public :
 
-        ProbabilityDistribution(Variant key, float p, ubyte mathop = 0) : value(key), p(p), mathop(mathop) {}
+        ProbabilityDistribution(Variant value, float p, ubyte mathop = 0) : value(value), p(p), mathop(mathop) {}
     };
 
 public :
@@ -153,14 +159,14 @@ public :
 protected :
 
     template <class T> std::map<T, int> GetFrecuencyMapping(const std::vector <T> &cells,
-        const std::vector<uint> &indexes = {})
+        const std::vector<uint> &restriction = {})
     /*--------------------------------------------------------------------------
     vars | indexes : index mapping restriction
     --------------------------------------------------------------------------*/
     {
         std::map<T, int> frecuency;
 
-        if(indexes.empty())
+        if(restriction.empty())
         {
             for(uint i = 0, n = cells.size(); i < n; ++i)
                 FrecuencyMapping<T>(frecuency, cells[i]);
@@ -169,7 +175,7 @@ protected :
         {
             for(uint i = 0, n = cells.size(); i < n; ++i)
             {
-                if(std::find(indexes.begin(), indexes.end(), i) != indexes.end())
+                if(std::find(restriction.begin(), restriction.end(), i) != restriction.end())
                     FrecuencyMapping<T>(frecuency, cells[i]);
             }
         }
@@ -178,40 +184,54 @@ protected :
     }
 
     template <class T> std::vector<ProbabilityDistribution> *GetDistributionFuncion(
-        const std::vector <T> &cells, const std::vector<uint> &indexes = {})
+        const std::vector <T> &cells, const std::vector<uint> &restriction = {})
     /*--------------------------------------------------------------------------
     nots | . for discrete variables, based on distribution function.
     --------------------------------------------------------------------------*/
     {
-        std::vector <ProbabilityDistribution> *discreteDistribution = new std::vector <ProbabilityDistribution>;
+        std::vector <ProbabilityDistribution> *probabilityDistribution = new std::vector <ProbabilityDistribution>;
 
-        std::map<T, int> frecuency = GetFrecuencyMapping<T>(cells, indexes);
+        std::map<T, int> frecuency = GetFrecuencyMapping<T>(cells, restriction);
 
         float N = cells.size();
 
         for(auto it : frecuency)
         {
-            discreteDistribution->push_back(ProbabilityDistribution(it.first, (float)(it.second)/N));
+            probabilityDistribution->push_back(ProbabilityDistribution(it.first, (float)(it.second)/N));
 
-            for(uint i = 0, n = cells.size();i < n; ++i)
+            if(restriction.empty())
             {
-                if(cells[i] == it.first)
-                    discreteDistribution->back().indexes.push_back(i);
+                for(uint i = 0, n = cells.size(); i < n; ++i)
+                {
+                    if(cells[i] == it.first)
+                        probabilityDistribution->back().indexes.push_back(i);
+                }
+            }
+            else
+            {
+                for(uint i = 0, n = cells.size(); i < n; ++i)
+                {
+                    if(std::find(restriction.begin(), restriction.end(), i) != restriction.end())
+                    {
+                        if(cells[i] == it.first)
+                            probabilityDistribution->back().indexes.push_back(i);
+                    }
+                }
             }
         }
 
-        return(discreteDistribution);
+        return(probabilityDistribution);
     }
 
     template <class T> std::vector<ProbabilityDistribution> *GetDensityFunction(
-        const std::vector <T> &cells, const std::vector<uint> &indexes = {})
+        const std::vector <T> &cells, const std::vector<uint> &restriction = {})
     /*--------------------------------------------------------------------------
     nots | . for continuous variables, based on density function.
     --------------------------------------------------------------------------*/
     {
         std::vector <ProbabilityDistribution> *probabilityDistribution = new std::vector <ProbabilityDistribution>;
 
-        std::map<T, int> frecuency = GetFrecuencyMapping<T>(cells, indexes);
+        std::map<T, int> frecuency = GetFrecuencyMapping<T>(cells, restriction);
 
         uint N = cells.size();
 
@@ -235,12 +255,28 @@ protected :
             probabilityDistribution->push_back(ProbabilityDistribution(it->first, 1.0f, 0));
         }
 
-        for(uint i = 0, n = cells.size(); i < n; ++i)
+        if(restriction.empty())
         {
-            if(cells[i] < it->first)
-                probabilityDistribution->front().indexes.push_back(i);
-            else
-                probabilityDistribution->back().indexes.push_back(i);
+            for(uint i = 0, n = cells.size(); i < n; ++i)
+            {
+                if(cells[i] < it->first)
+                    probabilityDistribution->front().indexes.push_back(i);
+                else
+                    probabilityDistribution->back().indexes.push_back(i);
+            }
+        }
+        else
+        {
+            for(uint i = 0, n = cells.size(); i < n; ++i)
+            {
+                if(std::find(restriction.begin(), restriction.end(), i) != restriction.end())
+                {
+                    if(cells[i] < it->first)
+                        probabilityDistribution->front().indexes.push_back(i);
+                    else
+                        probabilityDistribution->back().indexes.push_back(i);
+                }
+            }
         }
 
         return(probabilityDistribution);
@@ -256,7 +292,7 @@ public :
     virtual float GetEntropy(const std::vector<uint> &indexes = {});
 
     virtual std::vector<ProbabilityDistribution> *GetProbabilityDistribution(
-        const std::vector<uint> &indexes = {});
+        const std::vector<uint> &restriction = {});
 
     virtual Variant GetCell(uint index);
 };
@@ -283,12 +319,12 @@ public :
     virtual float GetEntropy(const std::vector<uint> &indexes = {});
 
     virtual std::vector<ProbabilityDistribution> *GetProbabilityDistribution(
-        const std::vector<uint> &indexes = {});
+        const std::vector<uint> &restriction = {});
 
     virtual Variant GetCell(uint index);
 };
 
-//------------------------------------------------------------------------| IntVector
+//------------------------------------------------------------------------| IntAttribute
 
 struct IntAttribute: public Attribute
 {
@@ -310,12 +346,12 @@ public :
     virtual float GetEntropy(const std::vector<uint> &indexes = {});
 
     virtual std::vector<ProbabilityDistribution> *GetProbabilityDistribution(
-        const std::vector<uint> &indexes = {});
+        const std::vector<uint> &restriction = {});
 
     virtual Variant GetCell(uint index);
 };
 
-//------------------------------------------------------------------------| FloaVector
+//------------------------------------------------------------------------| FloaAttribute
 
 struct FloaAttribute: public Attribute
 {
@@ -337,12 +373,12 @@ public :
     virtual float GetEntropy(const std::vector<uint> &indexes = {});
 
     virtual std::vector<ProbabilityDistribution> *GetProbabilityDistribution(
-        const std::vector<uint> &indexes = {});
+        const std::vector<uint> &restriction = {});
 
     virtual Variant GetCell(uint index);
 };
 
-//------------------------------------------------------------------------| WStringVector
+//------------------------------------------------------------------------| WStringAttribute
 
 struct WStringAttribute: public Attribute
 {
@@ -363,8 +399,7 @@ public :
 
     virtual float GetEntropy(const std::vector<uint> &indexes = {});
 
-    virtual std::vector<ProbabilityDistribution> *GetProbabilityDistribution(
-        const std::vector<uint> &indexes = {});
+    virtual std::vector<ProbabilityDistribution> *GetProbabilityDistribution(const std::vector<uint> &restriction = {});
 
     virtual Variant GetCell(uint index);
 };
@@ -378,7 +413,7 @@ nots | . vector requires pointer of Vectors to avoid object slicing
 {
 public :
 
-    enum FactorType {GenericType, BoolType, IntType, FloatType, WStringType};
+    enum AttributeType {GenericType, BoolType, IntType, FloatType, WStringType};
 
 public :
 

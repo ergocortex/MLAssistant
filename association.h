@@ -20,13 +20,14 @@ public :
     {
     public :
 
+        ubyte mathop;
         Variant value;
 
         std::vector <uint> indexes;
 
     public :
 
-        Item(const Variant &value, const std::vector <uint> &indexes);
+        Item(const ubyte mathop, const Variant &value, const std::vector <uint> &indexes);
     };
 
 public :
@@ -37,7 +38,7 @@ public :
 
     ItemSet(void);
 
-    std::vector <uint> &GetRestrictiveItem(const std::vector<uint> &restrictions = {});
+    std::vector<uint> &GetRestrictiveItem(const std::vector<uint> &restrictions = {});
     uint GetOverlapping(const std::vector <uint> &restrinction);
 };
 
@@ -49,8 +50,8 @@ public :
 
     DataFrame samples;
 
-    std::vector <ItemSet> itemSet;
-    std::vector <Rule> rules;
+    std::vector <ItemSet *> itemSet;
+    std::vector <Rule *> rules;
 
     int   support_threshold;
     float confidence_threshold;
@@ -59,9 +60,9 @@ public :
 
     AssociationRules(void);
 
-    void Generator(ItemSet &source);
-    float CalcConfidence(ItemSet &itemSet, uint mask);
-    void CreateRule(ItemSet &itemSet, uint mask);
+    void Generator(ItemSet *source);
+    float CalcConfidence(ItemSet *itemSet, uint mask);
+    void CreateRule(ItemSet *itemSet, uint mask);
 
     void Build(void);
 };

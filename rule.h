@@ -19,11 +19,12 @@ public :
     public :
 
         std::wstring attribute;
+        ubyte mathop;
         Variant restriction;
 
     public :
 
-        Factor(const std::wstring &attribute, const Variant &restriction);
+        Factor(const std::wstring &attribute, ubyte mathop, const Variant &restriction);
     };
 
 public :

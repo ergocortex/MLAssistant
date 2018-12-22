@@ -96,7 +96,7 @@ Variant Attribute::GetMode(const std::vector<uint> &indexes)
 float Attribute::GetEntropy(const std::vector<uint> &/*indexes*/) {return(0.0f);}
 
 std::vector<Attribute::ProbabilityDistribution> *Attribute::GetProbabilityDistribution(
-    const std::vector<uint> &indexes) {return(nullptr);}
+    const std::vector<uint> &/*restriction*/) {return(nullptr);}
 
 Variant Attribute::GetCell(uint index)
 {
@@ -105,7 +105,7 @@ Variant Attribute::GetCell(uint index)
     return(variant);
 }
 
-//------------------------------------------------------------------------| BoolVector
+//------------------------------------------------------------------------| BoolAttribute
 
 BoolAttribute::BoolAttribute(const std::wstring &attribute) : Attribute(attribute, true) {}
 
@@ -149,9 +149,9 @@ float BoolAttribute::GetEntropy(const std::vector<uint> &indexes)
 }
 
 std::vector<Attribute::ProbabilityDistribution> *BoolAttribute::GetProbabilityDistribution(
-    const std::vector<uint> &indexes)
+    const std::vector<uint> &restriction)
 {
-    return(GetDistributionFuncion<bool>(cells, indexes));
+    return(GetDistributionFuncion<bool>(cells, restriction));
 }
 
 Variant BoolAttribute::GetCell(uint index)
@@ -161,7 +161,7 @@ Variant BoolAttribute::GetCell(uint index)
     return(variant);
 }
 
-//------------------------------------------------------------------------| IntVector
+//------------------------------------------------------------------------| IntAttribute
 
 IntAttribute::IntAttribute(const std::wstring &attribute) : Attribute(attribute, false) {}
 
@@ -205,12 +205,12 @@ float IntAttribute::GetEntropy(const std::vector<uint> &indexes)
 }
 
 std::vector<Attribute::ProbabilityDistribution> *IntAttribute::GetProbabilityDistribution(
-    const std::vector<uint> &indexes)
+    const std::vector<uint> &restriction)
 {
     if(discrete)
-        return(GetDistributionFuncion<int>(cells, indexes));
+        return(GetDistributionFuncion<int>(cells, restriction));
     else
-        return(GetDensityFunction<int>(cells, indexes));
+        return(GetDensityFunction<int>(cells, restriction));
 }
 
 Variant IntAttribute::GetCell(uint index)
@@ -220,7 +220,7 @@ Variant IntAttribute::GetCell(uint index)
     return(variant);
 }
 
-//------------------------------------------------------------------------| FloaVector
+//------------------------------------------------------------------------| FloaAttribute
 
 FloaAttribute::FloaAttribute(const std::wstring &attribute) : Attribute(attribute, false) {}
 
@@ -264,12 +264,12 @@ float FloaAttribute::GetEntropy(const std::vector<uint> &indexes)
 }
 
 std::vector<Attribute::ProbabilityDistribution> *FloaAttribute::GetProbabilityDistribution(
-    const std::vector<uint> &indexes)
+    const std::vector<uint> &restriction)
 {
     if(discrete)
-        return(GetDistributionFuncion<float>(cells, indexes));
+        return(GetDistributionFuncion<float>(cells, restriction));
     else
-        return(GetDensityFunction<float>(cells, indexes));
+        return(GetDensityFunction<float>(cells, restriction));
 }
 
 Variant FloaAttribute::GetCell(uint index)
@@ -279,7 +279,7 @@ Variant FloaAttribute::GetCell(uint index)
     return(variant);
 }
 
-//------------------------------------------------------------------------| WStringVector
+//------------------------------------------------------------------------| WStringAttribute
 
 WStringAttribute::WStringAttribute(const std::wstring &attribute) : Attribute(attribute, true) {}
 
@@ -323,9 +323,9 @@ float WStringAttribute::GetEntropy(const std::vector<uint> &indexes)
 }
 
 std::vector<Attribute::ProbabilityDistribution> *WStringAttribute::GetProbabilityDistribution(
-    const std::vector<uint> &indexes)
+    const std::vector<uint> &restriction)
 {
-    return(GetDistributionFuncion<std::wstring>(cells, indexes));
+    return(GetDistributionFuncion<std::wstring>(cells, restriction));
 }
 
 Variant WStringAttribute::GetCell(uint index)

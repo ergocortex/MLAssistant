@@ -83,7 +83,8 @@ nots | . assuming last factor is class
             }
         }
 
-        if(child) AddEdge(probabilityDistribution[i].value, probabilityDistribution[i].p, 0, node, child);
+        if(child) AddEdge(probabilityDistribution[i].value, probabilityDistribution[i].p,
+                          probabilityDistribution[i].mathop, node, child);
     }
 
     --deep;

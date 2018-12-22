@@ -10,8 +10,8 @@ using namespace ML;
 
 //------------------------------------------------------------------------| ItemSet
 
-ItemSet::Item::Item(const Variant &value, const std::vector <uint> &indexes) :
-    value(value), indexes(indexes) {}
+ItemSet::Item::Item(const ubyte mathop, const Variant &value, const std::vector <uint> &indexes) :
+    mathop(mathop), value(value), indexes(indexes) {}
 
 ItemSet::ItemSet(void) {}
 
@@ -47,37 +47,58 @@ uint ItemSet::GetOverlapping(const std::vector <uint> &restrictions)
 
 AssociationRules::AssociationRules(void) : support_threshold(3), confidence_threshold(0.9f) {}
 
-void AssociationRules::Generator(ItemSet &source)
+void AssociationRules::Generator(ItemSet *source)
+/*------------------------------------------------------------------------------
+nots | . high attributes entropy with low support threshold leads to out of memory
+------------------------------------------------------------------------------*/
 {
+    const int maxdeep = 0;
+
+    static int deep = 0;
+
+    ++deep;
+
     for(uint i = 0, n = samples.attributes.size(); i < n; ++i)
     {
-        if(source.itemmap.find(samples.attributes[i]->name) == source.itemmap.end()) continue;
+        if(source->itemmap.find(samples.attributes[i]->name) != source->itemmap.end()) continue;
 
         std::vector<ML::Attribute::ProbabilityDistribution> *probabilityDistribution = nullptr;
 
-        probabilityDistribution = samples.attributes[i]->GetProbabilityDistribution(source.GetRestrictiveItem());
+        // '--> if itemmap is empty calculate distribution of all elements.
+
+        if(source->itemmap.empty())
+            probabilityDistribution = samples.attributes[i]->GetProbabilityDistribution();
+        else
+            probabilityDistribution = samples.attributes[i]->GetProbabilityDistribution(source->GetRestrictiveItem());
 
         for(auto it = probabilityDistribution->end(); it != probabilityDistribution->begin();  --it)
         {
-            auto &value = *(it - 1);
+            auto &distribution = *(it - 1);
 
-            if(value.indexes.size() < support_threshold)
+            if(distribution.value.IsNull() || (distribution.indexes.size() < support_threshold))
                 probabilityDistribution->erase(it - 1);
         }
 
-        for(auto it = probabilityDistribution->begin(); it != probabilityDistribution->end(); ++i)
+        if(probabilityDistribution->empty()) continue;
+
+        for(auto &it : *probabilityDistribution)
         {
-            itemSet.push_back(ItemSet(source));
+            itemSet.push_back(new ItemSet(*source));
 
-            itemSet.back().itemmap.insert(std::pair<std::wstring, ItemSet::Item>(samples.attributes[i]->name,
-                ItemSet::Item((*probabilityDistribution)[i].value, (*probabilityDistribution)[i].indexes)));
+            itemSet.back()->itemmap.insert(std::pair<std::wstring, ItemSet::Item>(samples.attributes[i]->name,
+                ItemSet::Item(it.mathop, it.value, it.indexes)));
 
-            Generator(itemSet.back());
+            if((maxdeep == 0) || (deep < maxdeep))
+            {
+                Generator(itemSet.back());
+            }
         }
     }
+
+    --deep;
 }
 
-float AssociationRules::CalcConfidence(ItemSet &itemSet, uint mask)
+float AssociationRules::CalcConfidence(ItemSet *itemSet, uint mask)
 {
     std::vector <uint> restrictions;
 
@@ -85,53 +106,53 @@ float AssociationRules::CalcConfidence(ItemSet &itemSet, uint mask)
 
     restrictions.clear();
 
-    for(uint i = 0, n = itemSet.itemmap.size(); i < n; ++i)
+    for(uint i = 0, n = itemSet->itemmap.size(); i < n; ++i)
     {
         if(mask & (1 << i))
             restrictions.push_back(i);
     }
 
-    float antecedends = itemSet.GetOverlapping(restrictions);
+    float antecedends = itemSet->GetOverlapping(restrictions);
 
     // '--> consequents (zeros)
 
     restrictions.clear();
 
-    for(uint i = 0, n = itemSet.itemmap.size(); i < n; ++i)
+    for(uint i = 0, n = itemSet->itemmap.size(); i < n; ++i)
     {
         if(!(mask & (1 << i)))
             restrictions.push_back(i);
     }
 
-    float consequents = itemSet.GetOverlapping(restrictions);
+    float consequents = itemSet->GetOverlapping(restrictions);
 
     return(consequents / antecedends);
 }
 
-void AssociationRules::CreateRule(ItemSet &itemSet, uint mask)
+void AssociationRules::CreateRule(ItemSet *itemSet, uint mask)
 {
     std::map<std::wstring, ItemSet::Item>::iterator it;
 
-    rules.push_back(Rule());
+    rules.push_back(new Rule());
 
     // '--> antecedents (ones)
 
-    it = itemSet.itemmap.begin();
+    it = itemSet->itemmap.begin();
 
-    for(uint i = 0, n = itemSet.itemmap.size(); i < n; ++i, ++it)
+    for(uint i = 0, n = itemSet->itemmap.size(); i < n; ++i, ++it)
     {
         if(mask & (1 << i))
-            rules.back().antecedents.push_back(Rule::Factor(it->first, it->second.value));
+            rules.back()->antecedents.push_back(Rule::Factor(it->first, it->second.mathop, it->second.value));
     }
 
     // '--> consequents (zeros)
 
-    it = itemSet.itemmap.begin();
+    it = itemSet->itemmap.begin();
 
-    for(uint i = 0, n = itemSet.itemmap.size(); i < n; ++i, ++it)
+    for(uint i = 0, n = itemSet->itemmap.size(); i < n; ++i, ++it)
     {
         if(!(mask & (1 << i)))
-            rules.back().consequents.push_back(Rule::Factor(it->first, it->second.value));
+            rules.back()->consequents.push_back(Rule::Factor(it->first, it->second.mathop, it->second.value));
     }
 }
 
@@ -142,36 +163,21 @@ void AssociationRules::Build(void)
 
     // '--> ItemSet Generation
 
-    for(uint i = 0, n = samples.attributes.size(); i < n; ++i)
-    {
-        std::vector<ML::Attribute::ProbabilityDistribution> *probabilityDistribution = nullptr;
+    itemSet.push_back(new ItemSet());
 
-        probabilityDistribution = samples.attributes[i]->GetProbabilityDistribution();
-
-        for(auto it = probabilityDistribution->end(); it != probabilityDistribution->begin();  --it)
-        {
-            auto &value = *(it - 1);
-
-            if(value.indexes.size() < support_threshold)
-                probabilityDistribution->erase(it - 1);
-        }
-
-        for(auto it = probabilityDistribution->begin(); it != probabilityDistribution->end(); ++i)
-        {
-            itemSet.push_back(ItemSet());
-
-            itemSet.back().itemmap.insert(std::pair<std::wstring, ItemSet::Item>(samples.attributes[i]->name,
-                ItemSet::Item((*probabilityDistribution)[i].value, (*probabilityDistribution)[i].indexes)));
-
-            Generator(itemSet.back());
-        }
-    }
+    Generator(itemSet.back());
 
     // '--> Rule Generation
 
     for(uint i = 0, n = itemSet.size(); i < n; ++i)
     {
-        for(uint mask = 1, combinations = (2 ^ itemSet[i].itemmap.size()) - 1; mask < combinations; ++mask)
+        // '--> combinations of bit with not all zeroes or all ones.
+
+        int bits = itemSet[i]->itemmap.size();
+
+        uint combinations = max(0, pow(2, bits) - 2);
+
+        for(uint mask = 1; mask <= combinations; ++mask)
         {
             if(CalcConfidence(itemSet[i], mask) > confidence_threshold)
                 CreateRule(itemSet[i], mask);

@@ -25,25 +25,29 @@ ML::Node *ProbabilityTree::TreeInduction(DataFrame &subsamples, std::vector <std
 
     for(Attribute *factor : subsamples.attributes)
     {
-        std::vector<ML::Attribute::ProbabilityDistribution> &frecuencyDiscrete = *factor->GetProbabilityDistribution();
-
-        for(uint i = 0, n = frecuencyDiscrete.size(); i < n; ++i)
+        if(factor->name == attribute)
         {
-            Node *child = nullptr;
+            std::vector<ML::Attribute::ProbabilityDistribution> &probabilityDistribution = *factor->GetProbabilityDistribution();
 
-            if(leaf)
+            for(uint i = 0, n = probabilityDistribution.size(); i < n; ++i)
             {
-                child = AddNode();
+                Node *child = nullptr;
 
-                child->leaf = true;
-                child->data = frecuencyDiscrete[i].value;
-            }
-            else
-            {
-                child = TreeInduction(*subsamples.GetSubDataFrame(frecuencyDiscrete[i].indexes), subattributes);
-            }
+                if(leaf)
+                {
+                    child = AddNode();
 
-            if(child) AddEdge(frecuencyDiscrete[i].value, frecuencyDiscrete[i].p, 0, node, child);
+                    child->leaf = true;
+                    child->data = probabilityDistribution[i].value;
+                }
+                else
+                {
+                    child = TreeInduction(*subsamples.GetSubDataFrame(probabilityDistribution[i].indexes), subattributes);
+                }
+
+                if(child) AddEdge(probabilityDistribution[i].value, probabilityDistribution[i].p,
+                                  probabilityDistribution[i].mathop, node, child);
+            }
         }
     }
 
