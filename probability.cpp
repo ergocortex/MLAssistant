@@ -9,7 +9,7 @@ using namespace ML;
 
 //------------------------------------------------------------------------| ProbabilityTree
 
-ProbabilityTree::ProbabilityTree(void) : Tree() {}
+ProbabilityTree::ProbabilityTree(ubyte attributeSelection) : Tree(), attributeSelection(attributeSelection) {}
 
 ML::Node *ProbabilityTree::TreeInduction(DataFrame &subsamples, std::vector <std::wstring> subattributes)
 {
@@ -17,7 +17,14 @@ ML::Node *ProbabilityTree::TreeInduction(DataFrame &subsamples, std::vector <std
 
     bool leaf = (subattributes.size() == 1);
 
-    std::wstring attribute = AttributeSelection::InformationGain(subsamples, subattributes, leaf ? 0 : 1);
+    std::wstring attribute;
+
+    switch(attributeSelection)
+    {
+    case 0 : attribute = AttributeSelection::InformationGain(subsamples, subattributes, leaf ? 0 : 1); break;
+    case 1 : attribute = AttributeSelection::GiniImpurity(subsamples, subattributes, leaf ? 0 : 1); break;
+    case 2 : attribute = AttributeSelection::ProportionGain(subsamples, subattributes, leaf ? 0 : 1); break;
+    }
 
     ClearAttribute(attribute, subattributes);
 
@@ -27,9 +34,9 @@ ML::Node *ProbabilityTree::TreeInduction(DataFrame &subsamples, std::vector <std
     {
         if(factor->name == attribute)
         {
-            std::vector<ML::Attribute::ProbabilityDistribution> &probabilityDistribution = *factor->GetProbabilityDistribution();
+            std::vector<ML::Attribute::ProbabilityDistribution> *probabilityDistribution = factor->GetProbabilityDistribution();
 
-            for(uint i = 0, n = probabilityDistribution.size(); i < n; ++i)
+            for(uint i = 0, n = (*probabilityDistribution).size(); i < n; ++i)
             {
                 Node *child = nullptr;
 
@@ -38,16 +45,18 @@ ML::Node *ProbabilityTree::TreeInduction(DataFrame &subsamples, std::vector <std
                     child = AddNode();
 
                     child->leaf = true;
-                    child->data = probabilityDistribution[i].value;
+                    child->data = (*probabilityDistribution)[i].value;
                 }
                 else
                 {
-                    child = TreeInduction(*subsamples.GetSubDataFrame(probabilityDistribution[i].indexes), subattributes);
+                    child = TreeInduction(*subsamples.GetSubDataFrame((*probabilityDistribution)[i].indexes), subattributes);
                 }
 
-                if(child) AddEdge(probabilityDistribution[i].value, probabilityDistribution[i].p,
-                                  probabilityDistribution[i].mathop, node, child);
+                if(child) AddEdge((*probabilityDistribution)[i].value, (*probabilityDistribution)[i].p,
+                                  (*probabilityDistribution)[i].mathop, node, child);
             }
+
+            delete(probabilityDistribution);
         }
     }
 

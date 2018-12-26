@@ -93,6 +93,8 @@ nots | . high attributes entropy with low support threshold leads to out of memo
                 Generator(itemSet.back());
             }
         }
+
+        delete(probabilityDistribution);
     }
 
     --deep;

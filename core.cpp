@@ -93,7 +93,9 @@ Variant Attribute::GetMode(const std::vector<uint> &indexes)
     return(variant);
 }
 
-float Attribute::GetEntropy(const std::vector<uint> &/*indexes*/) {return(0.0f);}
+float Attribute::GetAttributeEntropy(const std::vector<uint> &/*indexes*/) {return(0.0f);}
+
+float Attribute::GetAttributeGiniIndex(const std::vector<uint> &/*indexes*/) {return(1.0f);}
 
 std::vector<Attribute::ProbabilityDistribution> *Attribute::GetProbabilityDistribution(
     const std::vector<uint> &/*restriction*/) {return(nullptr);}
@@ -131,21 +133,14 @@ Variant BoolAttribute::GetMode(const std::vector<uint> &indexes)
     return(variant);
 }
 
-float BoolAttribute::GetEntropy(const std::vector<uint> &indexes)
+float BoolAttribute::GetAttributeEntropy(const std::vector<uint> &restrictions)
 {
-    std::map<bool, int> frecuency = GetFrecuencyMapping<bool>(cells, indexes);
-    std::vector<float> proportion;
+    return(GetEntropy(cells, restrictions));
+}
 
-    float entropy = 0.0f;
-    float N = cells.size();
-
-    for(auto it : frecuency)
-        proportion.push_back((float)(it.second)/N);
-
-    for(float p : proportion)
-        entropy -= (p * log2(p));
-
-    return(entropy);
+float BoolAttribute::GetAttributeGiniIndex(const std::vector<uint> &restrictions)
+{
+    return(GetGiniIndex(cells, restrictions));
 }
 
 std::vector<Attribute::ProbabilityDistribution> *BoolAttribute::GetProbabilityDistribution(
@@ -187,21 +182,14 @@ Variant IntAttribute::GetMode(const std::vector<uint> &indexes)
     return(variant);
 }
 
-float IntAttribute::GetEntropy(const std::vector<uint> &indexes)
+float IntAttribute::GetAttributeEntropy(const std::vector<uint> &restrictions)
 {
-    std::map<int, int> frecuency = GetFrecuencyMapping<int>(cells, indexes);
-    std::vector<float> proportion;
+    return(GetEntropy(cells, restrictions));
+}
 
-    float entropy = 0.0f;
-    float N = cells.size();
-
-    for(auto it : frecuency)
-        proportion.push_back((float)(it.second)/N);
-
-    for(float p : proportion)
-        entropy -= (p * log2(p));
-
-    return(entropy);
+float IntAttribute::GetAttributeGiniIndex(const std::vector<uint> &restrictions)
+{
+    return(GetGiniIndex(cells, restrictions));
 }
 
 std::vector<Attribute::ProbabilityDistribution> *IntAttribute::GetProbabilityDistribution(
@@ -246,21 +234,14 @@ Variant FloaAttribute::GetMode(const std::vector<uint> &indexes)
     return(variant);
 }
 
-float FloaAttribute::GetEntropy(const std::vector<uint> &indexes)
+float FloaAttribute::GetAttributeEntropy(const std::vector<uint> &restrictions)
 {
-    std::map<float, int> frecuency = GetFrecuencyMapping<float>(cells, indexes);
-    std::vector<float> proportion;
+    return(GetEntropy(cells, restrictions));
+}
 
-    float entropy = 0.0f;
-    float N = cells.size();
-
-    for(auto it : frecuency)
-        proportion.push_back((float)(it.second)/N);
-
-    for(float p : proportion)
-        entropy -= (p * log2(p));
-
-    return(entropy);
+float FloaAttribute::GetAttributeGiniIndex(const std::vector<uint> &restrictions)
+{
+    return(GetGiniIndex(cells, restrictions));
 }
 
 std::vector<Attribute::ProbabilityDistribution> *FloaAttribute::GetProbabilityDistribution(
@@ -305,21 +286,14 @@ Variant WStringAttribute::GetMode(const std::vector<uint> &indexes)
     return(variant);
 }
 
-float WStringAttribute::GetEntropy(const std::vector<uint> &indexes)
+float WStringAttribute::GetAttributeEntropy(const std::vector<uint> &restrictions)
 {
-    std::map<std::wstring, int> frecuency = GetFrecuencyMapping<std::wstring>(cells, indexes);
-    std::vector<float> proportion;
+    return(GetEntropy(cells, restrictions));
+}
 
-    float entropy = 0.0f;
-    float N = cells.size();
-
-    for(auto it : frecuency)
-        proportion.push_back((float)(it.second)/N);
-
-    for(float p : proportion)
-        entropy -= (p * log2(p));
-
-    return(entropy);
+float WStringAttribute::GetAttributeGiniIndex(const std::vector<uint> &restrictions)
+{
+    return(GetGiniIndex(cells, restrictions));
 }
 
 std::vector<Attribute::ProbabilityDistribution> *WStringAttribute::GetProbabilityDistribution(
@@ -338,6 +312,21 @@ Variant WStringAttribute::GetCell(uint index)
 //------------------------------------------------------------------------| DataFrame
 
 DataFrame::DataFrame(void) {}
+
+uint DataFrame::Size(void)
+{
+    uint size = std::numeric_limits<int>::max();
+
+    for(uint i = 0, n = attributes.size(); i < n; ++i)
+        size = min(size, attributes[i]->Size());
+
+    return(size);
+}
+
+void DataFrame::Clear(void)
+{
+    clrptrvector<Attribute *>(attributes);
+}
 
 ubyte DataFrame::GetColumnByAttribute(const std::wstring &attribute)
 {

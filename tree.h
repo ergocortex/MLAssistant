@@ -71,6 +71,12 @@ public :
 
     static std::wstring InformationGain(DataFrame &subsamples, std::vector<std::wstring> &subattributes,
         const ubyte classes = 1);
+
+    static std::wstring GiniImpurity(DataFrame &subsamples, std::vector<std::wstring> &subattributes,
+        const ubyte classes = 1);
+
+    static std::wstring ProportionGain(DataFrame &subsamples, std::vector<std::wstring> &subattributes,
+        const ubyte classes = 1);
 };
 
 //------------------------------------------------------------------------| Tree

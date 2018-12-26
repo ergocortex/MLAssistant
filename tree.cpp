@@ -25,10 +25,9 @@ std::wstring AttributeSelection::InformationGain(DataFrame &subsamples,
 nots | . information gain is greater the less homogeneity an attribute has.
 ------------------------------------------------------------------------------*/
 {
-    std::wstring attribute = L"";
     std::map <std::wstring, float> informationGain;
 
-    float entropy = subsamples.attributes.back()->GetEntropy();
+    float entropy = subsamples.attributes.back()->GetAttributeEntropy();
 
     for(uint i = 0, n = subsamples.attributes.size() - classes; i < n; ++i)
     {
@@ -36,22 +35,103 @@ nots | . information gain is greater the less homogeneity an attribute has.
 
         if(it != subattributes.end())
         {
-            std::vector<ML::Attribute::ProbabilityDistribution> &frecuencyDetail = *subsamples.attributes[i]->GetProbabilityDistribution();
+            std::vector<ML::Attribute::ProbabilityDistribution> *probabilityDistribution = subsamples.attributes[i]->GetProbabilityDistribution();
 
             float gain = 0.0f;
             float N = subsamples.attributes[i]->Size();
 
-            for(uint j = 0, m = frecuencyDetail.size(); j < m; ++j)
+            for(uint j = 0, m = (*probabilityDistribution).size(); j < m; ++j)
             {
-                gain -= ((frecuencyDetail[j].p / N) * subsamples.attributes.back()->GetEntropy(frecuencyDetail[j].indexes));
+                gain -= (((*probabilityDistribution)[j].p / N) * subsamples.attributes.back()->GetAttributeEntropy((*probabilityDistribution)[j].indexes));
             }
 
             informationGain.insert(std::pair<std::wstring, float>(subsamples.attributes[i]->name, entropy + gain));
+
+            delete(probabilityDistribution);
         }
     }
 
     auto it = informationGain.begin();
     int maximum = ML::FrecuencyMax<std::wstring, float>(informationGain);
+    std::advance(it, maximum);
+
+    return(it->first);
+}
+
+std::wstring AttributeSelection::GiniImpurity(DataFrame &subsamples,
+    std::vector<std::wstring> &subattributes, const ubyte classes)
+/*------------------------------------------------------------------------------
+nots | . source : https://www.researchgate.net/post/How_to_compute_impurity_using_Gini_Index
+------------------------------------------------------------------------------*/
+{
+    std::map <std::wstring, float> giniIndex;
+
+//    float prevGini = subsamples.attributes.back()->GetAttributeEntropy();
+
+    for(uint i = 0, n = subsamples.attributes.size() - classes; i < n; ++i)
+    {
+        auto it = std::find(subattributes.begin(), subattributes.end(), subsamples.attributes[i]->name);
+
+        if(it != subattributes.end())
+        {
+            std::vector<ML::Attribute::ProbabilityDistribution> *probabilityDistribution = subsamples.attributes[i]->GetProbabilityDistribution();
+
+            float postGini = 0.0f;
+            float N = subsamples.attributes[i]->Size();
+
+            for(uint j = 0, m = (*probabilityDistribution).size(); j < m; ++j)
+            {
+                postGini += (((*probabilityDistribution)[j].p / N) * subsamples.attributes.back()->GetAttributeGiniIndex((*probabilityDistribution)[j].indexes));
+            }
+
+            giniIndex.insert(std::pair<std::wstring, float>(subsamples.attributes[i]->name, postGini));
+
+            delete(probabilityDistribution);
+        }
+    }
+
+    auto it = giniIndex.begin();
+    int maximum = ML::FrecuencyMin<std::wstring, float>(giniIndex);
+    std::advance(it, maximum);
+
+    return(it->first);
+}
+
+std::wstring AttributeSelection::ProportionGain(DataFrame &subsamples, std::vector<std::wstring> &subattributes,
+    const ubyte classes)
+{
+    std::map <std::wstring, float> proportionGain;
+
+    float entropy = subsamples.attributes.back()->GetAttributeEntropy();
+
+    for(uint i = 0, n = subsamples.attributes.size() - classes; i < n; ++i)
+    {
+        auto it = std::find(subattributes.begin(), subattributes.end(), subsamples.attributes[i]->name);
+
+        if(it != subattributes.end())
+        {
+            std::vector<ML::Attribute::ProbabilityDistribution> *probabilityDistribution = subsamples.attributes[i]->GetProbabilityDistribution();
+
+            float gain = 0.0f;
+            float division = 0.0f;
+            float N = subsamples.attributes[i]->Size();
+
+            for(uint j = 0, m = (*probabilityDistribution).size(); j < m; ++j)
+            {
+                float p = (*probabilityDistribution)[j].p / N;
+
+                gain -= (p * subsamples.attributes.back()->GetAttributeEntropy((*probabilityDistribution)[j].indexes));
+                division -= (p * log2(p));
+            }
+
+            proportionGain.insert(std::pair<std::wstring, float>(subsamples.attributes[i]->name, (entropy + gain) / division));
+
+            delete(probabilityDistribution);
+        }
+    }
+
+    auto it = proportionGain.begin();
+    int maximum = ML::FrecuencyMax<std::wstring, float>(proportionGain);
     std::advance(it, maximum);
 
     return(it->first);

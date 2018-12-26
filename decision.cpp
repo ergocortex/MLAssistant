@@ -12,7 +12,93 @@ using namespace ML;
 
 //------------------------------------------------------------------------| DecisionTree
 
-DecisionTree::DecisionTree(void) : Tree(){}
+DecisionTree::DecisionTree(ubyte attributeSelection) : Tree(), attributeSelection(attributeSelection) {}
+
+void DecisionTree::Train(const DataFrame *dataframe)
+{
+    if(!dataframe) dataframe = &samples;
+
+    DataFrame subsamples = *dataframe;
+
+    std::vector <std::wstring> subattributes;
+
+    for(uint i = 0, n = dataframe->attributes.size() - 1; i < n; ++i)
+        subattributes.push_back(dataframe->attributes[i]->name);
+
+    clrptrvector<Node *>(nodes);
+    clrptrvector<Edge *>(edges);
+
+    TreeInduction(subsamples, subattributes);
+
+    RankHierarchy();
+}
+
+void DecisionTree::KCrossValidation(uint k)
+{
+    // '--> Reset Confusion Matrix
+
+    confusionMatrix.Clear();
+
+    std::vector<ML::Attribute::ProbabilityDistribution> *probabilityDistribution =
+            samples.attributes.back()->GetProbabilityDistribution();
+
+    for(uint i = 0, n = probabilityDistribution->size(); i < n; ++i)
+    {
+        FloaAttribute *floatAttribute = new FloaAttribute((*probabilityDistribution)[i].value.ToWString());
+
+        floatAttribute->cells.insert(floatAttribute->cells.begin(), n, 0.0f);
+
+        confusionMatrix.attributes.push_back(floatAttribute);
+    }
+
+    // '--> Populate Confusion Matrix
+
+    for(uint i = 0, n = (samples.Size() / k); i < n; ++i)
+    {
+        std::vector <uint> trainingIndexes;
+        std::vector <uint> validationIndexes;
+
+        for(uint j = 0, m = samples.Size(); j < m; ++j)
+        {
+            if((j >= (i * k)) && (j < min((i + 1) * k, samples.Size())))
+                validationIndexes.push_back(j);
+            else
+                trainingIndexes.push_back(j);
+        }
+
+        DataFrame *training = samples.GetSubDataFrame(trainingIndexes);
+        DataFrame *validation = samples.GetSubDataFrame(validationIndexes);
+
+        Train(training);
+
+        for(uint j = 0, m = validation->Size(); j < m; ++j)
+        {
+            DataFrame *sample = validation->GetSubDataFrame({j});
+
+            ML::Node *node = Predict(*sample);
+
+            if(node->leaf)
+            {
+                std::vector<Attribute *> &attributes = confusionMatrix.attributes;
+
+                int real = GetConfusionIndex(sample->attributes.back()->GetCell(0).ToWString());
+                int classified = GetConfusionIndex(node->data.ToWString());
+
+                static_cast<FloaAttribute *>(confusionMatrix.attributes[classified])->cells[real] += 1.0f;
+            }
+        }
+    }
+
+    // '--> Mean Calculation
+
+    for(uint i = 0, n = confusionMatrix.attributes.size(); i < n; ++i)
+    {
+        FloaAttribute *floatAttribute = static_cast<FloaAttribute *>(confusionMatrix.attributes[i]);
+
+        for(uint j = 0, m = floatAttribute->Size();  j < m; ++j)
+            floatAttribute->cells[j] /= (float)(k);
+    }
+}
 
 ML::Node *DecisionTree::TreeInduction(DataFrame &subsamples, std::vector<std::wstring> &subattributes)
 /*------------------------------------------------------------------------------
@@ -46,7 +132,14 @@ nots | . assuming last factor is class
 
     // '--> P4 : Select the attribute that best divides the subsamples dataframe.
 
-    std::wstring attribute = AttributeSelection::InformationGain(subsamples, subattributes);
+    std::wstring attribute;
+
+    switch(attributeSelection)
+    {
+    case 0 : attribute = AttributeSelection::InformationGain(subsamples, subattributes); break;
+    case 1 : attribute = AttributeSelection::GiniImpurity(subsamples, subattributes); break;
+    case 2 : attribute = AttributeSelection::ProportionGain(subsamples, subattributes); break;
+    }
 
     // '--> P5 : Clear attribute selected from attribute list.
 
@@ -62,13 +155,13 @@ nots | . assuming last factor is class
 
     Attribute *factor = subsamples.attributes[subsamples.GetColumnByAttribute(attribute)];
 
-    std::vector<ML::Attribute::ProbabilityDistribution> &probabilityDistribution = *factor->GetProbabilityDistribution();
+    std::vector<ML::Attribute::ProbabilityDistribution> *probabilityDistribution = factor->GetProbabilityDistribution();
 
-    for(uint i = 0, n = probabilityDistribution.size(); i < n; ++i)
+    for(uint i = 0, n = (*probabilityDistribution).size(); i < n; ++i)
     {
         Node *child = nullptr;
 
-        if(probabilityDistribution[i].indexes.empty())
+        if((*probabilityDistribution)[i].indexes.empty())
         {
             child = AddNode();
 
@@ -79,36 +172,28 @@ nots | . assuming last factor is class
         {
             if((maxdeep == 0) || (deep < maxdeep))
             {
-                child = TreeInduction(*subsamples.GetSubDataFrame(probabilityDistribution[i].indexes), subattributes);
+                child = TreeInduction(*subsamples.GetSubDataFrame((*probabilityDistribution)[i].indexes), subattributes);
             }
         }
 
-        if(child) AddEdge(probabilityDistribution[i].value, probabilityDistribution[i].p,
-                          probabilityDistribution[i].mathop, node, child);
+        if(child) AddEdge((*probabilityDistribution)[i].value, (*probabilityDistribution)[i].p,
+                          (*probabilityDistribution)[i].mathop, node, child);
     }
+
+    delete(probabilityDistribution);
 
     --deep;
     return(node);
 }
 
-void DecisionTree::Build(void)
+int DecisionTree::GetConfusionIndex(const std::wstring &value)
 {
-    DataFrame subsamples = samples;
+    for(uint i = 0, n = confusionMatrix.attributes.size(); i < n; ++i)
+    {
+        if(confusionMatrix.attributes[i]->name == value)
+            return(i);
+    }
 
-    std::vector <std::wstring> subattributes;
-
-    for(uint i = 0, n = samples.attributes.size() - 1; i < n; ++i)
-        subattributes.push_back(samples.attributes[i]->name);
-
-    clrptrvector<Node *>(nodes);
-    clrptrvector<Edge *>(edges);
-
-    TreeInduction(subsamples, subattributes);
-
-    RankHierarchy();
-}
-
-void DecisionTree::KCrossValidation(uint k)
-{
+    return(-1);
 
 }

@@ -1,6 +1,6 @@
 /*------------------------------------------------------------------------------
 auth | Roberto Peribáñez Iglesias
-date | dec. 2018
+date | Dec. 2018
 ------------------------------------------------------------------------------*/
 
 #ifndef PROBABILITY_H
@@ -14,10 +14,17 @@ namespace ML
 //------------------------------------------------------------------------| ProbabilityTree
 
 class ProbabilityTree : public Tree
+/*------------------------------------------------------------------------------
+vars | attributeSelection | 0 : Information Gain | 1 : Gini Impurity | 2 : Proportion Gain
+------------------------------------------------------------------------------*/
 {
 public :
 
-    ProbabilityTree(void);
+    ubyte attributeSelection;
+
+public :
+
+    ProbabilityTree(ubyte attributeSelection = 0);
 
     Node *TreeInduction(DataFrame &subsamples, std::vector<std::wstring> subattributes);
 
