@@ -14,7 +14,7 @@ Node::Node(Variant data, bool leaf) : data(data), leaf(leaf)  {}
 
 //------------------------------------------------------------------------| Edge
 
-Edge::Edge(const Variant &data, float p, ubyte mathop, Node *source, Node *target) :
+Edge::Edge(const Variant &data, float p, MathOp mathop, Node *source, Node *target) :
     source(source), target(target), data(data), mathop(mathop), p(p)  {}
 
 //------------------------------------------------------------------------| AttributeSelection
@@ -150,13 +150,19 @@ Node *Tree::AddNode(void)
     return(node);
 }
 
-Edge *Tree::AddEdge(const Variant &data, float p, ubyte mathop, Node *source, Node *target)
+Edge *Tree::AddEdge(const Variant &data, float p, MathOp mathop, Node *source, Node *target)
 {
     Edge *edge = new Edge(data, p, mathop, source, target);
 
     edges.push_back(edge);
 
     return(edge);
+}
+
+void Tree::Clear(void)
+{
+    clrptrvector<Node *>(nodes);
+    clrptrvector<Edge *>(edges);
 }
 
 void Tree::ClearAttribute(const std::wstring &attribute, std::vector <std::wstring> &attributes)
@@ -235,7 +241,7 @@ Node *Tree::Predict(DataFrame &sample)
         std::wstring attribute = node->data.ToWString();
         uint index = sample.GetColumnByAttribute(attribute);
 
-        std::wstring sA = sample.attributes[index]->GetCell(0).ToWString();
+        Variant valueA = sample.attributes[index]->GetCell(0);
 
         auto it = hierarchy.find(node);
 
@@ -243,9 +249,9 @@ Node *Tree::Predict(DataFrame &sample)
 
         for(int i = 0, n = it->second.edges.size(); i < n; ++i)
         {
-            std::wstring sB = it->second.edges[i]->data.ToWString();
+            Variant valueB = it->second.edges[i]->data;
 
-            if(sA == sB)
+            if(Validate(valueA, it->second.edges[i]->mathop, valueB))
             {
                 found = i;
                 break;

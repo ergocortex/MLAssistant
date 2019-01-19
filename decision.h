@@ -26,15 +26,20 @@ public :
 
 public :
 
+    static int GetArgumentIndex(const std::wstring &value, uint index);
+
+public :
+
     DecisionTree(ubyte attributeSelection = 0);
 
     void Train(const DataFrame *dataframe = nullptr);
-    void KCrossValidation(uint k);
+    void KCrossValidation(uint k);  
 
 private :
 
     Node *TreeInduction(DataFrame &subsamples, std::vector <std::wstring> &subattributes);
-    int GetConfusionIndex(const std::wstring &value);
+
+    int GetConfusionIndex(const std::wstring &value);    
 };
 }
 

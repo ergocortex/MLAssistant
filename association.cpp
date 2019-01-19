@@ -10,10 +10,10 @@ using namespace ML;
 
 //------------------------------------------------------------------------| ItemSet
 
-ItemSet::Item::Item(const ubyte mathop, const Variant &value, const std::vector <uint> &indexes) :
+ItemSet::Item::Item(const MathOp mathop, const Variant &value, const std::vector <uint> &indexes) :
     mathop(mathop), value(value), indexes(indexes) {}
 
-ItemSet::ItemSet(void) {}
+ItemSet::ItemSet(const float &p) : p(p) {}
 
 std::vector <uint> &ItemSet::GetRestrictiveItem(const std::vector <uint> &restrictions)
 {
@@ -44,6 +44,21 @@ uint ItemSet::GetOverlapping(const std::vector <uint> &restrictions)
 }
 
 //------------------------------------------------------------------------| AssociationRules
+
+AssociationRules::Completeness::Completeness(uint index, float p) : index(index), p(p) {}
+
+float AssociationRules::Completeness::Calculate(void)
+{
+    float result = 0.0f;
+    float delta = 1.0f / (float)(antecedents.size());
+
+    for(uint i = 0, n = antecedents.size(); i < n; ++i)
+    {
+        if(antecedents[i]) result += delta;
+    }
+
+    return(result);
+}
 
 AssociationRules::AssociationRules(void) : support_threshold(3), confidence_threshold(0.9f) {}
 
@@ -81,12 +96,14 @@ nots | . high attributes entropy with low support threshold leads to out of memo
 
         if(probabilityDistribution->empty()) continue;
 
-        for(auto &it : *probabilityDistribution)
+        for(auto &distribution : *probabilityDistribution)
         {
             itemSet.push_back(new ItemSet(*source));
 
+            itemSet.back()->p = distribution.p;
+
             itemSet.back()->itemmap.insert(std::pair<std::wstring, ItemSet::Item>(samples.attributes[i]->name,
-                ItemSet::Item(it.mathop, it.value, it.indexes)));
+                ItemSet::Item(distribution.mathop, distribution.value, distribution.indexes)));
 
             if((maxdeep == 0) || (deep < maxdeep))
             {
@@ -128,10 +145,10 @@ float AssociationRules::CalcConfidence(ItemSet *itemSet, uint mask)
 
     float consequents = itemSet->GetOverlapping(restrictions);
 
-    return(consequents / antecedends);
+    return(min(consequents / antecedends, 1.0f));
 }
 
-void AssociationRules::CreateRule(ItemSet *itemSet, uint mask)
+void AssociationRules::CreateRule(ItemSet *itemSet, uint mask, float p)
 {
     std::map<std::wstring, ItemSet::Item>::iterator it;
 
@@ -156,9 +173,14 @@ void AssociationRules::CreateRule(ItemSet *itemSet, uint mask)
         if(!(mask & (1 << i)))
             rules.back()->consequents.push_back(Rule::Factor(it->first, it->second.mathop, it->second.value));
     }
+
+    rules.back()->p = p;
 }
 
 void AssociationRules::Build(void)
+/*------------------------------------------------------------------------------
+nots | . confidence is the probability of the rule.
+------------------------------------------------------------------------------*/
 {
     itemSet.clear();
     rules.clear();
@@ -173,7 +195,7 @@ void AssociationRules::Build(void)
 
     for(uint i = 0, n = itemSet.size(); i < n; ++i)
     {
-        // '--> combinations of bit with not all zeroes or all ones.
+        // '--> combinations of bits with neither all zeroes nor all ones.
 
         int bits = itemSet[i]->itemmap.size();
 
@@ -181,8 +203,58 @@ void AssociationRules::Build(void)
 
         for(uint mask = 1; mask <= combinations; ++mask)
         {
-            if(CalcConfidence(itemSet[i], mask) > confidence_threshold)
-                CreateRule(itemSet[i], mask);
+            float confidence = CalcConfidence(itemSet[i], mask);
+
+            if(confidence > confidence_threshold)
+                CreateRule(itemSet[i], mask, confidence);
         }
     }
+}
+
+AssociationRules::Completeness *AssociationRules::Predict(DataFrame &sample)
+{
+    if(rules.empty()) return(nullptr);
+
+    std::vector <Completeness> completeness;
+
+    // '--> Populate
+
+    for(uint i = 0, n = rules.size(); i < n; ++i)
+    {
+        completeness.push_back(Completeness(i, rules[i]->p));
+
+        for(uint j = 0, m = rules[i]->antecedents.size(); j < m; ++j)
+        {
+            std::wstring attribute = rules[i]->antecedents[j].attribute;
+            uint index = sample.GetColumnByAttribute(attribute);
+
+            Variant valueA = sample.attributes[index]->GetCell(0);
+            Variant valueB = rules[i]->antecedents[j].value;
+
+            if(Validate(valueA, rules[i]->antecedents[j].mathop, valueB))
+                completeness.back().antecedents.push_back(true);
+            else
+                completeness.back().antecedents.push_back(false);
+        }
+    }
+
+    // '--> Priorize
+
+    for(uint i = 1, n = completeness.size(); i < n; ++i)
+    {
+        float reference = completeness[0].Calculate();
+        float complete = completeness[i].Calculate();
+
+        if(complete > reference)
+            std::swap(completeness[i], completeness[0]);
+        else
+        {
+            if(fcmp(complete, reference) && (completeness[i].p > completeness[0].p))
+                std::swap(completeness[i], completeness[0]);
+        }
+    }
+
+    Completeness *result = new Completeness(completeness[0]);
+
+    return(result);
 }

@@ -39,13 +39,13 @@ public :
 
     Variant data;
 
-    ubyte mathop;
+    MathOp mathop;
 
     float p;
 
 public :
 
-    Edge(const Variant &data, float p, ubyte mathop = 0, Node *source = nullptr, Node *target = nullptr);
+    Edge(const Variant &data, float p, MathOp mathop = 0, Node *source = nullptr, Node *target = nullptr);
 };
 
 //------------------------------------------------------------------------| Hierarchy
@@ -112,7 +112,9 @@ public :
     Tree(void);
 
     Node *AddNode(void);
-    Edge *AddEdge(const Variant &data, float p, ubyte mathop = 0, Node *source = nullptr, Node *target = nullptr);
+    Edge *AddEdge(const Variant &data, float p, MathOp mathop = 0, Node *source = nullptr, Node *target = nullptr);
+
+    void Clear(void);
 
     void ClearAttribute(const std::wstring &attribute, std::vector <std::wstring> &attributes);
 

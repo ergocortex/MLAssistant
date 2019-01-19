@@ -19,12 +19,12 @@ public :
     public :
 
         std::wstring attribute;
-        ubyte mathop;
-        Variant restriction;
+        MathOp mathop;
+        Variant value;
 
     public :
 
-        Factor(const std::wstring &attribute, ubyte mathop, const Variant &restriction);
+        Factor(const std::wstring &attribute, MathOp mathop, const Variant &value);
     };
 
 public :
@@ -32,9 +32,11 @@ public :
     std::vector <Factor> antecedents;
     std::vector <Factor> consequents;
 
+    float p;
+
 public :
 
-    Rule(void);
+    Rule(const float p = 0.0f);
 };
 }
 

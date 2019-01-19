@@ -4,7 +4,7 @@ using namespace ML;
 
 //------------------------------------------------------------------------| Rule
 
-Rule::Factor::Factor(const std::wstring &attribute, ubyte mathop, const Variant &restriction) :
-    attribute(attribute), mathop(mathop), restriction(restriction) {}
+Rule::Factor::Factor(const std::wstring &attribute, MathOp mathop, const Variant &restriction) :
+    attribute(attribute), mathop(mathop), value(restriction) {}
 
-Rule::Rule(void) {}
+Rule::Rule(const float p) : p(p) {}

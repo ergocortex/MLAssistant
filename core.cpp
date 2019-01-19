@@ -39,6 +39,58 @@ bool Variant::operator==(const Variant &rhs) const
     return(this->ToWString() == rhs.ToWString());
 }
 
+bool Variant::operator<(const Variant &rhs) const
+{
+    switch(type)
+    {
+    case Bool : return(data.b < rhs.data.b);
+    case Int : return(data.i < rhs.data.i);
+    case Float : return(data.f < rhs.data.f);
+    case WString : return(GetWString() < rhs.GetWString());
+    }
+
+    return(false);
+}
+
+bool Variant::operator<=(const Variant &rhs) const
+{
+    switch(type)
+    {
+    case Bool : return(data.b <= rhs.data.b);
+    case Int : return(data.i <= rhs.data.i);
+    case Float : return(data.f <= rhs.data.f);
+    case WString : return(GetWString() <= rhs.GetWString());
+    }
+
+    return(false);
+}
+
+bool Variant::operator>=(const Variant &rhs) const
+{
+    switch(type)
+    {
+    case Bool : return(data.b >= rhs.data.b);
+    case Int : return(data.i >= rhs.data.i);
+    case Float : return(data.f >= rhs.data.f);
+    case WString : return(GetWString() >= rhs.GetWString());
+    }
+
+    return(false);
+}
+
+bool Variant::operator>(const Variant &rhs) const
+{
+    switch(type)
+    {
+    case Bool : return(data.b > rhs.data.b);
+    case Int : return(data.i > rhs.data.i);
+    case Float : return(data.f > rhs.data.f);
+    case WString : return(GetWString() > rhs.GetWString());
+    }
+
+    return(false);
+}
+
 bool Variant::IsNull(void)
 {
     switch(type)
@@ -46,12 +98,7 @@ bool Variant::IsNull(void)
     case Bool : return(false);
     case Int : return(data.i == 0);
     case Float : return(data.f == 0.0f);
-    case WString :
-    {
-        std::wstring *wstring = static_cast<std::wstring *>(data.ptr);
-
-        return(wstring->empty());
-    }
+    case WString : return(GetWString().empty());
     case Generic : return(true);
     }
 
@@ -65,16 +112,18 @@ std::wstring Variant::ToWString(void) const
     case Bool : return(data.b ? L"Verdadero" : L"Falso");
     case Int : return(std::to_wstring(data.i));
     case Float : return(std::to_wstring(data.f));
-    case WString :
-    {
-        std::wstring *wstring = static_cast<std::wstring *>(data.ptr);
-
-        return(*wstring);
-    }
+    case WString : return(GetWString());
     case Generic : return(L"");
     }
 
     return(L"");
+}
+
+std::wstring Variant::GetWString(void) const
+{
+    std::wstring *wstring = static_cast<std::wstring *>(data.ptr);
+
+    return(*wstring);
 }
 
 //------------------------------------------------------------------------| Attribute
@@ -436,4 +485,20 @@ DataFrame *DataFrame::GetSubDataFrame(const std::vector <uint> &indexes)
     }
 
     return(dataframe);
+}
+
+//------------------------------------------------------------------------| Common
+
+bool ML::Validate(Variant &a, MathOp &mathop, Variant &b)
+{
+    switch(mathop)
+    {
+    case 0 : return(a == b);
+    case 1 : return(a < b);
+    case 2 : return(a <= b);
+    case 3 : return(a >= b);
+    case 4 : return(a > b);
+    }
+
+    return(false);
 }

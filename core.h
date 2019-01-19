@@ -14,11 +14,17 @@ typedef unsigned char ubyte;
 typedef unsigned int  uint;
 
 #define safedelete(ptr); {delete(ptr); ptr = nullptr;}
+#define FLTEPSILON 0.000001f
 
 
 namespace ML
 {
-//------------------------------------------------------------------------| Common
+//------------------------------------------------------------------------| Global
+
+inline bool fcmp(const float &a, const float &b, const float epsilon = FLTEPSILON)
+{
+    return(fabs(b - a) < epsilon);
+}
 
 inline float max(const float cmpA, const float cmpB)
 {
@@ -105,6 +111,12 @@ template <class K> typename std::map<K, int>::iterator FrecuencyMedian(std::map<
     return(it);
 }
 
+/*------------------------------------------------------------------------| MathOp
+vars | mathop | 0 : = | 1 : < | 2 : <= | 3 : >= | 4 : >
+------------------------------------------------------------------------------*/
+
+typedef ubyte MathOp;
+
 //------------------------------------------------------------------------| Variant
 
 struct Variant
@@ -138,10 +150,18 @@ public :
     Variant(const std::wstring &wstring);
 
     bool operator==(const Variant &rhs) const;
+    bool operator<(const Variant &rhs) const;
+    bool operator<=(const Variant &rhs) const;
+    bool operator>=(const Variant &rhs) const;
+    bool operator>(const Variant &rhs) const;
 
     bool IsNull(void);
 
     std::wstring ToWString(void) const;
+
+private :
+
+    std::wstring GetWString(void) const;
 };
 
 //------------------------------------------------------------------------| Attribute
@@ -154,21 +174,18 @@ nots | . entropy in samples with more than 2 classes can be greater than 1.
 public :
 
     struct ProbabilityDistribution
-    /*--------------------------------------------------------------------------
-    vars | mathop | 0 : = | 1 : < | 2 : <= | 3 : >= | 4 : >
-    --------------------------------------------------------------------------*/
     {
     public :
 
         Variant value;
         float p;
-        ubyte mathop;
+        MathOp mathop;
 
         std::vector <uint> indexes;
 
     public :
 
-        ProbabilityDistribution(Variant value, float p, ubyte mathop = 0) : value(value), p(p), mathop(mathop) {}
+        ProbabilityDistribution(Variant value, float p, MathOp mathop = 0) : value(value), p(p), mathop(mathop) {}
     };
 
 public :
@@ -498,6 +515,10 @@ public :
 
     DataFrame *GetSubDataFrame(const std::vector <uint> &indexes);
 };
+
+//------------------------------------------------------------------------| Common
+
+bool Validate(Variant &a, MathOp &mathop, Variant &b);
 }
 
 #endif // CORE_H

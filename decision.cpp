@@ -12,6 +12,17 @@ using namespace ML;
 
 //------------------------------------------------------------------------| DecisionTree
 
+int DecisionTree::GetArgumentIndex(const std::wstring &value, uint index)
+{
+    uint separator = value.find(L":");
+
+    switch(index)
+    {
+    case 0 : return(stoi(value.substr(0, separator)));
+    case 1 : return(stoi(value.substr(separator + 1)));
+    }
+}
+
 DecisionTree::DecisionTree(ubyte attributeSelection) : Tree(), attributeSelection(attributeSelection) {}
 
 void DecisionTree::Train(const DataFrame *dataframe)
@@ -40,27 +51,32 @@ void DecisionTree::KCrossValidation(uint k)
     confusionMatrix.Clear();
 
     std::vector<ML::Attribute::ProbabilityDistribution> *probabilityDistribution =
-            samples.attributes.back()->GetProbabilityDistribution();
+        samples.attributes.back()->GetProbabilityDistribution();
 
     for(uint i = 0, n = probabilityDistribution->size(); i < n; ++i)
     {
-        FloaAttribute *floatAttribute = new FloaAttribute((*probabilityDistribution)[i].value.ToWString());
+        WStringAttribute *wstringAttribute = new WStringAttribute((*probabilityDistribution)[i].value.ToWString());
 
-        floatAttribute->cells.insert(floatAttribute->cells.begin(), n, 0.0f);
+        wstringAttribute->cells.insert(wstringAttribute->cells.begin(), n, L"0:0");
 
-        confusionMatrix.attributes.push_back(floatAttribute);
+        confusionMatrix.attributes.push_back(wstringAttribute);
     }
 
     // '--> Populate Confusion Matrix
 
-    for(uint i = 0, n = (samples.Size() / k); i < n; ++i)
+    uint delta = (samples.Size() / k) + 1;
+
+    for(uint i = 0; i < k; ++i)
     {
         std::vector <uint> trainingIndexes;
         std::vector <uint> validationIndexes;
 
+        uint intervalstart = (uint)((float)(i) * (float)(delta));
+        uint intervalend = min(intervalstart + delta, samples.Size());
+
         for(uint j = 0, m = samples.Size(); j < m; ++j)
         {
-            if((j >= (i * k)) && (j < min((i + 1) * k, samples.Size())))
+            if((j >= intervalstart) && (j < intervalend))
                 validationIndexes.push_back(j);
             else
                 trainingIndexes.push_back(j);
@@ -73,21 +89,40 @@ void DecisionTree::KCrossValidation(uint k)
 
         for(uint j = 0, m = validation->Size(); j < m; ++j)
         {
+            int positives, instances;
+
             DataFrame *sample = validation->GetSubDataFrame({j});
 
             ML::Node *node = Predict(*sample);
+
+            int real = GetConfusionIndex(sample->attributes.back()->GetCell(0).ToWString());
+
+            positives = GetArgumentIndex(static_cast<WStringAttribute *>(confusionMatrix.attributes[real])->cells[real], 0);
+            instances = GetArgumentIndex(static_cast<WStringAttribute *>(confusionMatrix.attributes[real])->cells[real], 1);
+
+            ++instances;
+
+            static_cast<WStringAttribute *>(confusionMatrix.attributes[real])->cells[real] = std::to_wstring(positives) +
+                L":" + std::to_wstring(instances);
 
             if(node->leaf)
             {
                 std::vector<Attribute *> &attributes = confusionMatrix.attributes;
 
-                int real = GetConfusionIndex(sample->attributes.back()->GetCell(0).ToWString());
                 int classified = GetConfusionIndex(node->data.ToWString());
 
-                static_cast<FloaAttribute *>(confusionMatrix.attributes[classified])->cells[real] += 1.0f;
+                positives = GetArgumentIndex(static_cast<WStringAttribute *>(confusionMatrix.attributes[classified])->cells[real], 0);
+                instances = GetArgumentIndex(static_cast<WStringAttribute *>(confusionMatrix.attributes[classified])->cells[real], 1);
+
+                ++positives;
+
+                static_cast<WStringAttribute *>(confusionMatrix.attributes[classified])->cells[real] = std::to_wstring(positives) +
+                    L":" + std::to_wstring(instances);
             }
         }
     }
+
+    return;
 
     // '--> Mean Calculation
 
@@ -151,7 +186,7 @@ nots | . assuming last factor is class
 
     // '--> P7 : For every value of attribute (being subsubsample the set of elements with value V in attribute A).
     // '--> P8 : If subsubsample is empty then create an edge with mode class.
-    // '--> P9 : Else create an edge than bind node to node returned frome TreeIndction(subsubdataframe, subsubattributes)
+    // '--> P9 : Else create an edge than bind node to node returned frome TreeInduction(subsubdataframe, subsubattributes)
 
     Attribute *factor = subsamples.attributes[subsamples.GetColumnByAttribute(attribute)];
 
